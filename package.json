@@ -3,13 +3,20 @@
   "version": "1.0.0",
   "description": "Tamil Minecraft creators: build your profile, get discovered, and earn certificates.",
   "type": "module",
-  "main": "server.js",
+  "main": "server.ts",
   "scripts": {
-    "dev": "node server.js",
-    "start": "node server.js",
-    "build": "node -e \"console.log('Build complete')\""
+    "dev": "tsx server.ts",
+    "start": "tsx server.ts",
+    "build": "tsc",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
   }
 }

@@ -1,6 +1,6 @@
 {
-  "name": "Tamil Minecraft Creators Showcase",
-  "description": "Tamil Minecraft creators: build your profile, get discovered, and earn certificates.",
+  "name": "TMC Awards",
+  "description": "TMC Awards: Tamil Minecraft Creators showcase, official community certificates, and Best Creator voting.",
   "permissions": [],
   "capabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

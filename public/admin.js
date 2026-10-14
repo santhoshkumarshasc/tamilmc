@@ -1,7 +1,9 @@
 (function(){
 'use strict';
-let factorId=null,profiles=[],certs=[],types=[],editingType=null,editing=null,current=null,idleTimer=null;
-const IDLE_MS=15*60*1000;
+let factorId=null,profiles=[],certs=[],types=[],users=[],editingType=null,editing=null,current=null;
+let adminTimer=null,adminExpiresAt=null;
+const ADMIN_TIMEOUT_MS=5*60*1000; // 5 minutes strict session timeout
+
 function selects(){
   const th=$('cTheme').value,tt=$('tTheme').value,ti=$('tIcon').value,ct=$('cType').value;
   const themeOpts=Object.keys(THEMES).map(k=>`<option value="${k}">${esc(t('theme.'+k))}</option>`).join('');
@@ -17,13 +19,58 @@ function typeOptions(keep){
 }
 selects();
 
-function view(step){['stepLogin','stepMfa','app'].forEach(s=>$(s).classList.toggle('hide',s!==step));$('outBtn').classList.toggle('hide',step==='stepLogin')}
-async function signOut(){clearTimeout(idleTimer);await sb.auth.signOut();view('stepLogin');['lPass','mCode'].forEach(i=>$(i).value='')}
+function view(step){
+  ['stepLogin','stepMfa','app'].forEach(s=>$(s).classList.toggle('hide',s!==step));
+  $('outBtn').classList.toggle('hide',step==='stepLogin');
+  $('admSessionTimer').classList.toggle('hide',step!=='app');
+}
+
+/* 5-minute Session Timeout */
+function startAdminTimer(){
+  clearInterval(adminTimer);
+  adminExpiresAt=Date.now()+ADMIN_TIMEOUT_MS;
+  updateAdminCountdown();
+  adminTimer=setInterval(updateAdminCountdown,1000);
+}
+function updateAdminCountdown(){
+  const remaining=Math.max(0,adminExpiresAt-Date.now());
+  const mins=Math.floor(remaining/60000);
+  const secs=Math.floor((remaining%60000)/1000);
+  const el=$('admTimeLeft');
+  if(el) el.textContent=`${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  if(remaining<=0){
+    clearInterval(adminTimer);
+    signOut();
+    alert('Admin session ended after 5 minutes.');
+  }
+}
+
+async function signOut(){
+  clearInterval(adminTimer);
+  await sb.auth.signOut();
+  view('stepLogin');
+  ['lPass','mCode','lToken'].forEach(i=>{if($(i))$(i).value=''});
+}
 $('outBtn').onclick=signOut;
-function resetIdle(){clearTimeout(idleTimer);idleTimer=setTimeout(signOut,IDLE_MS)}
-['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{if(!$('app').classList.contains('hide'))resetIdle()},{passive:true}));
 
 /* ---------- login + MFA ---------- */
+if($('lTokenGo')){
+  const submitToken = async()=>{
+    clearMsg($('lMsg'));
+    const tk = ($('lToken').value || '').trim();
+    if(!tk) return setMsg($('lMsg'), t('ad.fail'), 'err');
+    $('lTokenGo').disabled = true;
+    const {data, error} = await sb.rpc('admin_login_token', {token: tk});
+    $('lTokenGo').disabled = false;
+    if(error || !data || !data.ok){
+      return setMsg($('lMsg'), t('ad.fail'), 'err');
+    }
+    await enter();
+  };
+  $('lTokenGo').onclick = submitToken;
+  $('lToken').onkeydown = e => { if(e.key === 'Enter') submitToken(); };
+}
+
 $('lGo').onclick=async()=>{
   clearMsg($('lMsg'));
   $('lGo').disabled=true;
@@ -60,24 +107,36 @@ $('mGo').onclick=async()=>{
 async function enter(){
   const {data}=await sb.rpc('is_admin');
   if(!data){await sb.auth.signOut();view('stepLogin');return setMsg($('lMsg'),t('ad.fail'),'err')}
-  view('app');resetIdle();await refresh();
+  view('app');
+  startAdminTimer();
+  await refresh();
   sample();fillType(null);
 }
 
 /* ---------- tabs ---------- */
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('[data-tab]').forEach(x=>x.setAttribute('aria-pressed',x===b));
-  $('tab-certs').classList.toggle('hide',b.dataset.tab!=='certs');
-  $('tab-types').classList.toggle('hide',b.dataset.tab!=='types');
-  $('tab-creators').classList.toggle('hide',b.dataset.tab!=='creators');
+  const t=b.dataset.tab;
+  $('tab-certs').classList.toggle('hide',t!=='certs');
+  $('tab-creators').classList.toggle('hide',t!=='creators');
+  $('tab-users').classList.toggle('hide',t!=='users');
+  $('tab-types').classList.toggle('hide',t!=='types');
+  $('tab-settings').classList.toggle('hide',t!=='settings');
 });
 
 async function refresh(){
-  const [p,c,ty]=await Promise.all([sb.rpc('admin_list_profiles'),sb.rpc('admin_list_certificates'),sb.rpc('admin_list_types')]);
-  profiles=p.data||[];certs=c.data||[];types=ty.data||[];renderProfiles();renderCerts();renderTypes();
+  const [p,c,ty,u]=await Promise.all([
+    sb.rpc('admin_list_profiles'),
+    sb.rpc('admin_list_certificates'),
+    sb.rpc('admin_list_types'),
+    sb.rpc('admin_list_users')
+  ]);
+  profiles=p.data||[];certs=c.data||[];types=ty.data||[];users=u.data||[];
+  renderProfiles();renderCerts();renderTypes();renderUsers();
   const keep=$('cType').value;typeOptions(keep);
   if(!keep&&types.some(x=>x.is_active)&&!$('cAward').value){$('cType').value=types.find(x=>x.is_active).id;applyType()}
   $('cPick').innerHTML=`<option value="">${esc(t('ad.manual'))}</option>`+profiles.map(x=>`<option value="${esc(x.id)}">${esc(x.channel_name)} (@${esc(x.handle)})</option>`).join('');
+  loadServerIcon();
 }
 
 /* ---------- certificates ---------- */
@@ -110,17 +169,17 @@ $('aDl').onclick=()=>{if(current)downloadCanvas($('aCert'),'preview-'+current.ce
 
 function renderCerts(){
   $('cBody').innerHTML=certs.length?certs.map(c=>`<tr><td><b>${esc(c.cert_code)}</b></td><td>${esc(c.recipient_name)}</td><td>${esc(c.type_name||'-')}</td><td>${esc(certField(c,'award'))}</td>
-    <td class="status ${esc(c.status)}">${esc(t('st.'+c.status))}</td><td>${esc(c.redeemed_by_handle?'@'+c.redeemed_by_handle:'')}</td>
+    <td class="status ${esc(c.status)}">${esc(t('st.'+c.status))}</td><td>${esc(c.user_id||'')}</td>
     <td style="display:flex;gap:8px">
       <button class="btn small" data-prev="${esc(c.id)}">${t('ad.prev')}</button>
       ${c.status==='unused'?`<button class="btn small" data-re="${esc(c.id)}">${t('ad.reissue')}</button><button class="btn small danger" data-rev="${esc(c.id)}">${t('ad.revoke')}</button>`:''}
       <button class="btn small danger" data-del="${esc(c.id)}">${t('ad.delete')}</button></td></tr>`).join(''):`<tr><td colspan="7">${t('ad.nocerts')}</td></tr>`;
   const byId=id=>certs.find(x=>x.id===id);
-  $('cBody').querySelectorAll('[data-prev]').forEach(b=>b.onclick=()=>{const c=byId(b.dataset.prev);current=c;$('cTheme').value=c.theme;drawCert($('aCert'),c,c.theme);$('aDl').disabled=false;$('aCert').scrollIntoView({block:'center'})});
+  $('cBody').querySelectorAll('[data-prev]').forEach(b=>b.onclick=()=>{const c=byId(b.dataset.prev);current=c;$('cTheme').value=c.theme||'emerald';drawCert($('aCert'),c,c.theme||'emerald');$('aDl').disabled=false;$('aCert').scrollIntoView({block:'center'})});
   $('cBody').querySelectorAll('[data-re]').forEach(b=>b.onclick=async()=>{
     const {data,error}=await sb.rpc('admin_reissue_token',{p_id:b.dataset.re});
     if(error)return setMsg($('cOutMsg'),t('ad.reissuefail'),'err');
-    $('cToken').textContent=data;$('cOut').classList.remove('hide');setMsg($('cOutMsg'),t('ad.reissued'),'ok');$('cToken').scrollIntoView({block:'center'});
+    $('cToken').textContent=data.token;$('cOut').classList.remove('hide');setMsg($('cOutMsg'),t('ad.reissued'),'ok');$('cToken').scrollIntoView({block:'center'});
   });
   $('cBody').querySelectorAll('[data-rev]').forEach(b=>b.onclick=async()=>{if(!confirm(t('ad.confirm.revoke')))return;await sb.rpc('admin_set_certificate_status',{p_id:b.dataset.rev,p_status:'revoked'});refresh()});
   $('cBody').querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm(t('ad.confirm.delete')))return;await sb.rpc('admin_delete_certificate',{p_id:b.dataset.del});refresh()});
@@ -130,13 +189,13 @@ function renderCerts(){
 function renderProfiles(){
   $('uList').innerHTML=profiles.length?profiles.map(p=>`<div class="list-item">
     <div><b>${esc(p.channel_name)}</b> <span class="by" style="color:var(--muted)">@${esc(p.handle)}</span>
-      <div class="note" style="margin:2px 0 0">${esc(p.email)} · ${p.is_hidden?t('ad.hiddenby'):(p.is_public?t('ad.public'):t('ad.private'))} · ${p.likes} ${t('ad.likes')}</div></div>
+      <div class="note" style="margin:2px 0 0">${esc(p.display_name)} · ${p.is_hidden?t('ad.hiddenby'):(p.is_public?t('ad.public'):t('ad.private'))} · ${p.votes||0} votes · ${p.likes||0} ${t('ad.likes')}</div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn small" data-edit="${esc(p.id)}">${t('ad.edit')}</button>
       <button class="btn small" data-hide="${esc(p.id)}">${p.is_hidden?t('ad.unhide'):t('ad.hide')}</button>
       <button class="btn small danger" data-rm="${esc(p.id)}">${t('ad.delete')}</button></div></div>`).join(''):`<div class="empty">${t('ad.nousers')}</div>`;
   const byId=id=>profiles.find(x=>x.id===id);
-  const save=(p,over)=>sb.rpc('admin_update_profile',{p_id:p.id,p_display:over.display_name??p.display_name,p_channel:over.channel_name??p.channel_name,p_bio:over.bio??p.bio??'',p_hidden:over.is_hidden??p.is_hidden});
+  const save=(p,over)=>sb.rpc('admin_update_profile',{p_id:p.id,p_display:over.display_name??p.display_name,p_channel:over.channel_name??p.channel_name,p_bio:over.bio??p.bio??'',p_hidden:over.is_hidden??p.is_hidden,p_votes:over.votes??p.votes??0});
   $('uList').querySelectorAll('[data-hide]').forEach(b=>b.onclick=async()=>{const p=byId(b.dataset.hide);await save(p,{is_hidden:!p.is_hidden});refresh()});
   $('uList').querySelectorAll('[data-rm]').forEach(b=>b.onclick=async()=>{const p=byId(b.dataset.rm);if(!confirm(t('ad.confirm.user',{n:p.channel_name})))return;await sb.rpc('admin_delete_profile',{p_id:p.id});refresh()});
   $('uList').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{
@@ -152,6 +211,68 @@ function renderProfiles(){
   };
 }
 $('editClose').onclick=()=>$('editDlg').close();
+
+/* ---------- users ---------- */
+function renderUsers(){
+  $('userTableBody').innerHTML=users.length?users.map(u=>{
+    const prof=profiles.find(p=>p.id===u.id);
+    return `<tr>
+      <td><code>${esc(u.id)}</code></td>
+      <td><b>${esc(u.email)}</b></td>
+      <td>${fmtDate(u.created_at)}</td>
+      <td>${prof?esc(prof.channel_name)+' (@'+esc(prof.handle)+')':'-'}</td>
+      <td><button class="btn small danger" data-del-u="${esc(u.id)}">Delete Account</button></td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="5" class="empty">No registered user accounts yet.</td></tr>`;
+
+  $('userTableBody').querySelectorAll('[data-del-u]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Permanently delete this user account and its creator profile?')) return;
+    await sb.rpc('admin_delete_user',{p_id:b.dataset.delU});
+    refresh();
+  });
+}
+
+/* ---------- server icon settings ---------- */
+let serverIconData='';
+async function loadServerIcon(){
+  const {data}=await sb.rpc('get_server_icon');
+  if(data){
+    $('serverIconSlotAdmin').innerHTML=`<img src="${esc(data)}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">`;
+    $('navIconSlot').innerHTML=`<img src="${esc(data)}" class="nav-server-icon">`;
+  }
+}
+$('adIconFile').onchange=e=>{
+  const file=e.target.files&&e.target.files[0];
+  if(file){
+    const r=new FileReader();
+    r.onload=ev=>{
+      serverIconData=ev.target.result;
+      $('serverIconSlotAdmin').innerHTML=`<img src="${esc(serverIconData)}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">`;
+    };
+    r.readAsDataURL(file);
+  }
+};
+$('adIconUrl').oninput=e=>{
+  serverIconData=e.target.value.trim();
+  if(serverIconData){
+    $('serverIconSlotAdmin').innerHTML=`<img src="${esc(serverIconData)}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">`;
+  }
+};
+$('adIconSave').onclick=async()=>{
+  clearMsg($('adIconMsg'));
+  if(!serverIconData) return setMsg($('adIconMsg'),'Please upload an icon file or enter an image URL.','err');
+  await sb.rpc('admin_set_server_icon',{icon:serverIconData});
+  $('navIconSlot').innerHTML=`<img src="${esc(serverIconData)}" class="nav-server-icon">`;
+  setMsg($('adIconMsg'),'Server icon updated successfully!','ok');
+  fx.confetti();
+};
+$('adIconReset').onclick=async()=>{
+  await sb.rpc('admin_set_server_icon',{icon:null});
+  $('serverIconSlotAdmin').innerHTML=`<svg viewBox="0 0 8 8" style="width:36px;height:36px"><rect width="8" height="8" rx="1.2" fill="#1f7a45"/><g fill="#3dffa0"><rect x="1" y="1" width="2" height="2"/><rect x="5" y="1" width="2" height="2"/><rect x="3" y="3" width="2" height="2"/><rect x="1" y="5" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/></g></svg>`;
+  $('navIconSlot').innerHTML=`<svg viewBox="0 0 8 8" aria-hidden="true"><rect width="8" height="8" rx="1.2" fill="#1f7a45"/><g fill="#3dffa0"><rect x="1" y="1" width="2" height="2"/><rect x="5" y="1" width="2" height="2"/><rect x="3" y="3" width="2" height="2"/><rect x="1" y="5" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/></g></svg>`;
+  $('adIconUrl').value='';$('adIconFile').value='';
+  setMsg($('adIconMsg'),'Server icon reset to default.','ok');
+};
 
 /* ---------- certificate types ---------- */
 function typeForm(){
@@ -178,7 +299,7 @@ $('tSave').onclick=async()=>{
   const {error}=await sb.rpc('admin_save_type',{p_id:editingType?editingType.id:null,p_name:f.name,p_name_ta:f.name_ta,p_heading:f.heading,p_heading_ta:f.heading_ta,p_award:f.award,p_award_ta:f.award_ta,p_theme:f.theme,p_icon:f.icon,p_message:f.message,p_active:f.is_active});
   $('tSave').disabled=false;
   if(error)return setMsg($('tMsgOut'),t('ad.type.err'),'err');
-  setMsg($('tMsgOut'),t('ad.type.saved'),'ok');fx.confetti();fillType(null);setMsg($('tMsgOut'),t('ad.type.saved'),'ok');await refresh();
+  setMsg($('tMsgOut'),t('ad.type.saved'),'ok');fx.confetti();fillType(null);await refresh();
 };
 function renderTypes(){
   $('typeList').innerHTML=types.length?types.map(x=>`<div class="list-item"><div><b>${esc(typeName(x))}</b>${x.is_active?'':` <span class="note">(${t('ad.type.off')})</span>`}
@@ -190,10 +311,40 @@ function renderTypes(){
 
 function fillTypeTitle(){$('typeFormTitle').textContent=editingType?t('ad.type.edit'):t('ad.type.new')}
 function sample(){drawCert($('aCert'),current||{recipient_name:t('ad.sample.n'),channel_name:t('ad.sample.c'),award:t('ad.sample.a'),cert_code:'CERT-XXXXXXXX',issued_at:new Date()},current?$('cTheme').value:'emerald')}
-document.addEventListener('langchange',()=>{selects();if(!$('app').classList.contains('hide')){renderCerts();renderProfiles();renderTypes();typePreview();fillTypeTitle();const f=$('cPick').firstChild;if(f)f.textContent=t('ad.manual');sample()}});
-/* ---------- start ---------- */
+document.addEventListener('langchange',()=>{selects();if(!$('app').classList.contains('hide')){renderCerts();renderProfiles();renderTypes();renderUsers();typePreview();fillTypeTitle();sample()}});
+
+if($('themeBtn')) $('themeBtn').onclick=()=>{
+  const curr=document.documentElement.getAttribute('data-theme')||'light';
+  const next=curr==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try{localStorage.setItem('tmc_theme', next)}catch(e){}
+};
+
+/* ---------- start & token URL check ---------- */
 (async()=>{
-  const {data}=await sb.auth.getSession();
-  if(data.session){await afterLogin()}else view('stepLogin');
+  const searchParams=new URLSearchParams(window.location.search);
+  const tokenParam=searchParams.get('token');
+  if(tokenParam!=='ADMINOFTMC'){
+    document.title = '404 - Page Not Found';
+    document.body.innerHTML = `
+      <div style="font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f17;color:#f1f5f9;text-align:center;padding:24px">
+        <div style="max-width:480px;padding:48px 24px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.5)">
+          <div style="display:inline-block;padding:4px 12px;background:rgba(239,68,68,0.15);color:#f87171;border-radius:9999px;font-size:13px;font-weight:700;margin-bottom:16px;border:1px solid rgba(239,68,68,0.3)">404 ERROR</div>
+          <h1 style="font-size:76px;margin:0;color:#ef4444;font-weight:900;line-height:1">404</h1>
+          <h2 style="font-size:24px;margin:16px 0 10px;color:#f8fafc">Page Not Found</h2>
+          <p style="color:#94a3b8;font-size:15px;line-height:1.6;margin:0 0 28px">The requested page does not exist or access has been restricted. Please check the URL and try again.</p>
+          <a href="/" style="display:inline-block;padding:12px 26px;background:#1f9d5e;color:#fff;text-decoration:none;border-radius:12px;font-weight:700">Return to TMC Showcase</a>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const {data}=await sb.rpc('admin_login_token',{token:'ADMINOFTMC'});
+  if(data&&data.ok){
+    await enter();
+    return;
+  }
+  view('stepLogin');
 })();
 })();

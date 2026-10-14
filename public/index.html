@@ -3,132 +3,571 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Tamil Minecraft Creators Showcase</title>
-<meta name="description" content="Tamil Minecraft creators: build your profile, get discovered, and earn certificates.">
-<meta property="og:title" content="Tamil Minecraft Creators Showcase">
-<meta property="og:description" content="Tamil Minecraft creators: build your profile, get discovered, and earn certificates.">
+<title>TMC Awards</title>
+<meta name="description" content="TMC Awards: Tamil Minecraft Creators showcase, official community certificates, and Best Creator voting.">
+<meta property="og:title" content="TMC Awards">
+<meta property="og:description" content="TMC Awards: Tamil Minecraft Creators showcase, official community certificates, and Best Creator voting.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;800&family=Press+Start+2P&family=Noto+Sans+Tamil:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Noto+Sans+Tamil:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<script>
+  (function() {
+    try {
+      var saved = localStorage.getItem('tmc_theme');
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch(e) {}
+  })();
+</script>
 </head>
 <body>
-<nav><div class="wrap nav-in">
-  <a class="logo" href="#top" aria-label="Home">
-    <svg viewBox="0 0 8 8" aria-hidden="true"><rect width="8" height="8" rx="1.2" fill="#1f7a45"/><g fill="#3dffa0"><rect x="1" y="1" width="2" height="2"/><rect x="5" y="1" width="2" height="2"/><rect x="3" y="3" width="2" height="2"/><rect x="1" y="5" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/></g></svg>
-    <span>TN BLOCKS</span></a>
-  <div class="links">
-    <a href="#showcase" data-i18n="nav.showcase">Showcase</a><a href="#dashboard" id="navDash" data-i18n="nav.profile">My profile</a><a href="#verify" data-i18n="nav.verify">Verify</a>
+<nav id="topNav"><div class="wrap nav-in">
+  <a class="logo" href="#showcase" data-nav="showcase" aria-label="TMC Awards">
+    <span class="logo-mark" id="navIconSlot">
+      <svg viewBox="0 0 8 8" aria-hidden="true"><rect width="8" height="8" rx="1.2" fill="#1f7a45"/><g fill="#3dffa0"><rect x="1" y="1" width="2" height="2"/><rect x="5" y="1" width="2" height="2"/><rect x="3" y="3" width="2" height="2"/><rect x="1" y="5" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/></g></svg>
+    </span>
+    <span class="logo-text">
+      <b class="logo-brand">TMC AWARDS</b>
+      <span class="logo-sub">Tamil Minecraft</span>
+    </span>
+  </a>
+
+  <!-- Desktop Links -->
+  <div class="links desktop-only">
+    <a href="#showcase" class="nav-link active" data-nav="showcase" data-i18n="nav.showcase">Showcase</a>
+    <a href="#dashboard" class="nav-link hide" data-nav="dashboard" id="navDash" data-i18n="nav.profile">My profile</a>
+    <a href="#redeem" class="nav-link" data-nav="redeem" id="navRedeem" data-i18n="nav.redeem">Redeem</a>
   </div>
-  <button class="lang" id="langBtn" aria-label="Language">தமிழ்</button>
-  <button class="btn small primary" id="authBtn" style="flex:none" data-i18n="auth.in">Sign in</button>
+
+  <!-- Desktop Actions -->
+  <div class="nav-actions desktop-only">
+    <button class="theme-toggle" id="themeBtn" aria-label="Toggle dark/light mode" title="Toggle theme">
+      <span class="theme-icon-light">☀️</span>
+      <span class="theme-icon-dark">🌙</span>
+    </button>
+    <button class="lang" id="langBtn" aria-label="Language">தமிழ்</button>
+    <button class="btn small primary" id="authBtn" style="flex:none" data-i18n="auth.in">Sign in</button>
+  </div>
+
+  <!-- Mobile Hamburger Button -->
+  <button class="hamburger-btn mobile-only" id="navToggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileNav">
+    <span class="hamburger-bar"></span>
+    <span class="hamburger-bar"></span>
+    <span class="hamburger-bar"></span>
+  </button>
 </div></nav>
 
-<header class="hero" id="top"><div class="wrap">
-  <div class="hero-grid">
-    <div>
-      <span class="tag-pill" data-i18n="hero.tag">Tamil Minecraft creators</span>
-      <h1><span data-i18n="hero.t1">Your Tamil Minecraft channel,</span> <span class="grad-text" data-i18n="hero.t2">your own profile</span></h1>
-      <p data-i18n="hero.p">Create an account, design your public profile, and appear in the showcase right away. Win an award and claim your certificate with a token.</p>
-      <div class="cta">
-        <button class="btn primary" id="heroJoin" data-i18n="hero.cta1">Create my profile</button>
-        <a class="btn" href="#showcase" data-i18n="hero.cta2">Browse creators</a>
-      </div>
-      <div class="stats">
-        <div class="stat glass"><b id="sCreators">0</b><small data-i18n="stat.creators">Creators</small></div>
-        <div class="stat glass"><b id="sCerts">0</b><small data-i18n="stat.certs">Certificates claimed</small></div>
-      </div>
+<!-- Mobile Navigation Drawer / Dropdown -->
+<div class="mobile-drawer hide" id="mobileNav" role="dialog" aria-modal="true" aria-label="Mobile Navigation">
+  <div class="mobile-drawer-backdrop" id="mobileNavBackdrop"></div>
+  <div class="mobile-drawer-content">
+    <div class="mobile-drawer-head">
+      <span class="mobile-drawer-title">TMC Awards</span>
+      <button class="icon-btn" id="mobileNavClose" aria-label="Close menu">✕</button>
     </div>
-    <div class="scene" aria-hidden="true">
-      <div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      <div class="cube-shadow"></div>
+    <div class="mobile-drawer-links">
+      <a href="#showcase" class="mobile-nav-link active" data-nav="showcase">
+        <span class="mn-icon">🏆</span>
+        <span data-i18n="nav.showcase">Showcase</span>
+      </a>
+      <a href="#dashboard" class="mobile-nav-link hide" data-nav="dashboard" id="mNavDash">
+        <span class="mn-icon">👤</span>
+        <span data-i18n="nav.profile">My profile</span>
+      </a>
+      <a href="#redeem" class="mobile-nav-link" data-nav="redeem" id="mNavRedeem">
+        <span class="mn-icon">📜</span>
+        <span data-i18n="nav.redeem">Redeem</span>
+      </a>
     </div>
-  </div>
-</div></header>
 
-<section id="showcase"><div class="wrap">
-  <div class="sec-head rv"><h2 data-i18n="show.h">Creator showcase</h2><p data-i18n="show.p">Open a card to see the full profile. Sign in to like your favourites.</p></div>
-  <div class="toolbar rv">
-    <input class="search" style="max-width:360px" id="search" type="search" data-i18n-ph="show.search" placeholder="Search creators" data-i18n-label="show.search" aria-label="Search creators" maxlength="40">
-  </div>
-  <div class="grid" id="grid"></div>
-</div></section>
+    <div class="mobile-drawer-divider"></div>
 
-<section id="dashboard" class="hide"><div class="wrap">
-  <div class="sec-head rv"><h2 data-i18n="dash.h">My profile</h2><p data-i18n="dash.p">Changes go live as soon as you save. No review needed.</p></div>
-  <div class="split">
-    <div class="panel glass rv"><div class="form">
-      <div><label for="pHandle" data-i18n="f.handle">Handle (cannot change later)</label><input id="pHandle" maxlength="24" placeholder="block_thambi" autocomplete="off"></div>
-      <div class="row2">
-        <div><label for="pName" data-i18n="f.name">Your name</label><input id="pName" maxlength="40"></div>
-        <div><label for="pChannel" data-i18n="f.channel">Channel name</label><input id="pChannel" maxlength="40"></div>
-      </div>
-      <div><label for="pUrl" data-i18n="f.url">Channel link</label><input id="pUrl" inputmode="url" placeholder="https://youtube.com/@you" maxlength="200"></div>
-      <div><label for="pBio" data-i18n="f.bio">About you</label><textarea id="pBio" maxlength="300" data-i18n-ph="f.bio.ph"></textarea></div>
-      <div><label data-i18n="f.icon">Icon</label><div class="swatches" id="pEmojis"></div></div>
-      <div class="row2">
-        <div><label data-i18n="f.accent">Accent colour</label><div class="swatches" id="pSwatches"></div></div>
-        <div><label for="pColor" data-i18n="f.custom">Custom colour</label><input id="pColor" type="color" value="#1f7a45"></div>
-      </div>
-      <div><label for="pStyle" data-i18n="f.style">Card style</label><select id="pStyle"></select></div>
-      <div><label data-i18n="f.links">Links (up to 4)</label><div class="form" id="pLinks"></div></div>
-      <div style="display:flex;gap:12px;align-items:center"><input type="checkbox" id="pPublic" checked><label for="pPublic" style="margin:0" data-i18n="f.public">Show my profile in the showcase</label></div>
-      <div id="pMsg" class="msg hide" role="status"></div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <button class="btn primary" id="pSave" data-i18n="f.save">Save profile</button>
-        <button class="btn danger" id="pDelete" data-i18n="f.delete">Delete account</button>
-      </div>
-    </div></div>
-    <div class="rv">
-      <p class="note" style="margin-top:0" data-i18n="f.preview">Live preview</p>
-      <div id="pPreview"></div>
+    <div class="mobile-drawer-controls">
+      <!-- Dark / Light Mode option on mobile -->
+      <button class="mobile-opt-btn" id="mThemeBtn" aria-label="Toggle theme">
+        <span class="m-opt-left">
+          <span class="theme-icon-light">☀️ Light mode</span>
+          <span class="theme-icon-dark">🌙 Dark mode</span>
+        </span>
+        <span class="theme-pill" id="themePillLabel">Theme</span>
+      </button>
+
+      <!-- Language switcher on mobile -->
+      <button class="mobile-opt-btn" id="mLangBtn" aria-label="Toggle language">
+        <span class="m-opt-left">🌐 <span id="mLangLabel">Language</span></span>
+        <span class="theme-pill" id="mLangVal">தமிழ்</span>
+      </button>
+    </div>
+
+    <div class="mobile-drawer-divider"></div>
+
+    <!-- Mobile Legal Links -->
+    <div class="mobile-drawer-legal">
+      <button class="mobile-opt-btn" id="mTermsBtn" type="button">
+        <span class="m-opt-left">📜 <span data-i18n="foot.terms">Terms & Conditions</span></span>
+      </button>
+      <button class="mobile-opt-btn" id="mPrivacyBtn" type="button">
+        <span class="m-opt-left">🛡️ <span data-i18n="foot.privacy">Privacy Policy</span></span>
+      </button>
+    </div>
+
+    <div class="mobile-drawer-footer">
+      <button class="btn primary" id="mAuthBtn" style="width:100%" data-i18n="auth.in">Sign in</button>
     </div>
   </div>
+</div>
 
-  <div class="panel glass rv" style="margin-top:36px">
-    <h3 style="margin-bottom:16px" data-i18n="claim.h">Claim a certificate</h3>
-    <div class="row2">
-      <div><label for="rToken" data-i18n="claim.token">Token from the admin</label><input id="rToken" placeholder="TMC-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" maxlength="30"></div>
-      <div style="align-self:end"><button class="btn primary" id="rBtn" data-i18n="claim.btn">Redeem token</button></div>
+<main id="pageContainer">
+
+  <!-- ==================== PAGE 1: SHOWCASE & VOTING ==================== -->
+  <div class="page-view" id="page-showcase">
+    <header class="hero" id="top"><div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <span class="tag-pill" data-i18n="hero.tag">Tamil Minecraft Community</span>
+          <h1><span data-i18n="hero.t1">TMC Awards,</span> <span class="grad-text" data-i18n="hero.t2">celebrating Tamil Minecraft creators</span></h1>
+          <p data-i18n="hero.p">Vote for your Best Creator, build your public profile, get discovered, and earn official community certificates.</p>
+          <div class="cta">
+            <button class="btn primary" id="heroJoin" data-i18n="hero.cta1">Create my profile</button>
+            <a class="btn" href="#showcase-grid" id="browseBtn" data-i18n="hero.cta2">Browse & Vote</a>
+          </div>
+          <div class="stats">
+            <div class="stat glass"><b id="sCreators">0</b><small data-i18n="stat.creators">Creators</small></div>
+            <div class="stat glass"><b id="sCerts">0</b><small data-i18n="stat.certs">Certificates claimed</small></div>
+          </div>
+        </div>
+        
+        <!-- 3D Minecraft Cup with Spotlight Effect -->
+        <div class="trophy-stage" aria-label="Minecraft 3D Cup with Spotlight">
+          <div class="spotlight-cone"></div>
+          <div class="spotlight-motes">
+            <i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="mc-cup-wrap">
+            <div class="mc-cup" id="heroCup">
+              <div class="cup-spark">✦</div>
+
+              <!-- Cup Bowl Main (top gold body) -->
+              <div class="mc-block cup-bowl-main">
+                <div class="mc-face gold-face f-front">
+                  <div class="cup-jewel" title="Emerald Gem"></div>
+                </div>
+                <div class="mc-face gold-face f-back">
+                  <div class="cup-jewel"></div>
+                </div>
+                <div class="mc-face gold-face f-left"></div>
+                <div class="mc-face gold-face f-right"></div>
+                <div class="mc-face f-top"></div>
+              </div>
+
+              <!-- Left Handle -->
+              <div class="cup-handle handle-left">
+                <div class="handle-pixel hp1"></div>
+                <div class="handle-pixel hp2"></div>
+                <div class="handle-pixel hp3"></div>
+              </div>
+
+              <!-- Right Handle -->
+              <div class="cup-handle handle-right">
+                <div class="handle-pixel hp1"></div>
+                <div class="handle-pixel hp2"></div>
+                <div class="handle-pixel hp3"></div>
+              </div>
+
+              <!-- Cup Bowl Lower -->
+              <div class="mc-block cup-bowl-low">
+                <div class="mc-face gold-face f-front"></div>
+                <div class="mc-face gold-face f-back"></div>
+                <div class="mc-face gold-face f-left"></div>
+                <div class="mc-face gold-face f-right"></div>
+              </div>
+
+              <!-- Cup Stem Pillar -->
+              <div class="mc-block cup-stem">
+                <div class="mc-face gold-face f-front"></div>
+                <div class="mc-face gold-face f-back"></div>
+                <div class="mc-face gold-face f-left"></div>
+                <div class="mc-face gold-face f-right"></div>
+              </div>
+
+              <!-- Base Tier 2: Gold Ingot Step -->
+              <div class="mc-block cup-base2">
+                <div class="mc-face gold-face f-front"></div>
+                <div class="mc-face gold-face f-back"></div>
+                <div class="mc-face gold-face f-left"></div>
+                <div class="mc-face gold-face f-right"></div>
+                <div class="mc-face gold-face f-top"></div>
+              </div>
+
+              <!-- Base Tier 1: Dark Obsidian/Stone Block -->
+              <div class="mc-block cup-base1">
+                <div class="mc-face dark-face f-front"></div>
+                <div class="mc-face dark-face f-back"></div>
+                <div class="mc-face dark-face f-left"></div>
+                <div class="mc-face dark-face f-right"></div>
+                <div class="mc-face dark-face f-top"></div>
+                <div class="mc-face dark-face f-bottom"></div>
+              </div>
+            </div>
+          </div>
+          <div class="pedestal-glow"></div>
+        </div>
+      </div>
+    </div></header>
+
+    <section id="showcase-grid"><div class="wrap">
+      
+      <!-- Voting System Banner: Who is your Best Creator (1 Person = 1 Vote) -->
+      <div class="voting-banner rv">
+        <div>
+          <span class="voting-badge">🏆 TMC COMMUNITY POLL</span>
+          <h3 style="margin:8px 0 4px;font-size:24px" data-i18n="vote.title">Who is your Best Creator?</h3>
+          <p style="margin:0 0 6px;color:var(--muted);font-size:14px" data-i18n="vote.sub">Cast your vote for the best Tamil Minecraft creator! One vote per visitor.</p>
+          <div id="voteStatusLine" style="display:inline-flex;align-items:center;gap:8px;padding:4px 12px;background:rgba(31,157,94,0.12);color:var(--em);border-radius:9999px;font-size:12px;font-weight:700;border:1px solid rgba(31,157,94,0.25)">
+            <span id="voteRuleLabel" data-i18n="vote.limit_hint">Rule: 1 Person = 1 Vote only. Click another creator to switch your vote.</span>
+          </div>
+        </div>
+        <div id="votingLeaderInfo" style="text-align:right">
+          <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Current Leader</span>
+          <div id="voteLeaderName" style="font-size:20px;font-weight:800;color:var(--em)">-</div>
+          <small id="voteLeaderCount" style="color:var(--muted);font-weight:600">0 votes</small>
+        </div>
+      </div>
+
+      <div class="sec-head rv">
+        <h2 data-i18n="show.h">Creator showcase & voting</h2>
+        <p data-i18n="show.p">Vote for your favorite creator and explore Tamil Minecraft talent.</p>
+      </div>
+      <div class="toolbar rv">
+        <input class="search" style="max-width:360px" id="search" type="search" data-i18n-ph="show.search" placeholder="Search creators" data-i18n-label="show.search" aria-label="Search creators" maxlength="40">
+      </div>
+      <div class="grid" id="grid"></div>
+    </div></section>
+  </div>
+
+  <!-- ==================== PAGE 2: MY PROFILE ==================== -->
+  <div class="page-view hide" id="page-dashboard">
+    <section><div class="wrap">
+      
+      <!-- Welcome Certificate Banner -->
+      <div class="welcome-cert-banner rv" id="welcomeCertBanner" style="background:linear-gradient(135deg,rgba(31,157,94,0.12),rgba(45,212,191,0.08));border:1px solid rgba(31,157,94,0.28);border-radius:18px;padding:16px 22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:24px;box-shadow:var(--neu-shadow-sm)">
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="font-size:32px">🎓</span>
+          <div>
+            <h4 style="margin:0 0 3px;font-size:17px;font-weight:700;color:var(--text)" data-i18n="cert.banner_title">Your Welcome Certificate is Ready!</h4>
+            <p class="note" style="margin:0;font-size:13px" data-i18n="cert.banner_sub">Every member receives a verified TMC Community Welcome Certificate.</p>
+          </div>
+        </div>
+        <button type="button" class="btn primary small" id="btnOpenWelcomeModal" data-i18n="cert.banner_btn">🎓 Download Welcome Certificate</button>
+      </div>
+
+      <div class="sec-head rv">
+        <h2 data-i18n="dash.h">My profile</h2>
+        <p data-i18n="dash.p">Changes go live as soon as you save. Welcome certificate automatically awarded upon creation!</p>
+      </div>
+      <div class="split">
+        <div class="panel glass rv"><div class="form">
+          <div><label for="pHandle" data-i18n="f.handle">Handle (cannot change later)</label><input id="pHandle" maxlength="24" placeholder="tamil_crafter" autocomplete="off"></div>
+          <div class="row2">
+            <div><label for="pName" data-i18n="f.name">Your name</label><input id="pName" maxlength="40"></div>
+            <div><label for="pChannel" data-i18n="f.channel">Channel name</label><input id="pChannel" maxlength="40"></div>
+          </div>
+          <div><label for="pUrl" data-i18n="f.url">Main channel link</label><input id="pUrl" inputmode="url" placeholder="https://youtube.com/@you" maxlength="200"></div>
+          <div><label for="pBio" data-i18n="f.bio">About you</label><textarea id="pBio" maxlength="300" data-i18n-ph="f.bio.ph"></textarea></div>
+          
+          <!-- Avatar Customization: Upload Image OR Image URL (No emojis) -->
+          <div style="margin-bottom:14px">
+            <label data-i18n="f.icon">Profile avatar photo</label>
+            <div class="tabs" style="margin-bottom:10px">
+              <button type="button" class="chip" id="btnIconUpload" aria-pressed="true" data-i18n="f.icon_upload">Upload Image</button>
+              <button type="button" class="chip" id="btnIconUrl" aria-pressed="false" data-i18n="f.icon_url">Image URL</button>
+            </div>
+            
+            <div id="paneIconUpload" style="margin-top:8px">
+              <input type="file" id="pAvatarFile" accept="image/png,image/jpeg,image/webp,image/gif" style="padding:10px">
+              <small class="note" style="display:block;margin-top:4px" data-i18n="f.upload_ph">Choose square image file (PNG/JPG)</small>
+            </div>
+            
+            <div id="paneIconUrl" class="hide" style="margin-top:8px">
+              <input id="pAvatarUrl" placeholder="https://..." maxlength="300">
+            </div>
+          </div>
+
+          <!-- Social Media Channels -->
+          <div style="background:var(--surface-card);padding:18px;border-radius:18px;border:1px solid rgba(255,255,255,0.7)">
+            <label style="margin-bottom:12px;font-weight:700" data-i18n="f.socials">Social Media Channels</label>
+            <div class="form">
+              <div><label for="sYt" data-i18n="f.yt" style="font-size:12px">YouTube</label><input id="sYt" placeholder="https://youtube.com/@..." maxlength="200"></div>
+              <div class="row2">
+                <div><label for="sDiscord" data-i18n="f.discord" style="font-size:12px">Discord</label><input id="sDiscord" placeholder="https://discord.gg/..." maxlength="200"></div>
+                <div><label for="sInsta" data-i18n="f.insta" style="font-size:12px">Instagram</label><input id="sInsta" placeholder="https://instagram.com/..." maxlength="200"></div>
+              </div>
+              <div class="row2">
+                <div><label for="sTwitch" data-i18n="f.twitch" style="font-size:12px">Twitch</label><input id="sTwitch" placeholder="https://twitch.tv/..." maxlength="200"></div>
+                <div><label for="sX" data-i18n="f.x" style="font-size:12px">X (Twitter)</label><input id="sX" placeholder="https://x.com/..." maxlength="200"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Custom Profile Links -->
+          <div class="custom-links-sec" style="background:var(--surface-card);padding:18px;border-radius:18px;border:1px solid rgba(255,255,255,0.7);margin-top:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div>
+                <label style="margin:0;font-weight:700" data-i18n="f.custom_links_title">Custom Profile Links</label>
+                <small class="note" style="display:block;margin-top:2px" data-i18n="f.custom_links_sub">Add your SMP server, merch store, secondary channels, or portfolio.</small>
+              </div>
+              <button type="button" class="btn small primary" id="btnAddCustomLink" data-i18n="f.add_link">+ Add Custom Link</button>
+            </div>
+            <div id="customLinksList" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
+
+          <div class="row2">
+            <div><label data-i18n="f.accent">Accent colour</label><div class="swatches" id="pSwatches"></div></div>
+            <div><label for="pColor" data-i18n="f.custom">Custom colour</label><input id="pColor" type="color" value="#1f7a45"></div>
+          </div>
+          <div><label for="pStyle" data-i18n="f.style">Card style</label><select id="pStyle"></select></div>
+          <div style="display:flex;gap:12px;align-items:center"><input type="checkbox" id="pPublic" checked><label for="pPublic" style="margin:0" data-i18n="f.public">Show my profile in the showcase</label></div>
+          <div id="pMsg" class="msg hide" role="status"></div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <button class="btn primary" id="pSave" data-i18n="f.save">Save profile</button>
+            <button class="btn danger" id="pDelete" data-i18n="f.delete">Delete account</button>
+          </div>
+        </div></div>
+        <div class="rv">
+          <p class="note" style="margin-top:0" data-i18n="f.preview">Live preview</p>
+          <div id="pPreview"></div>
+        </div>
+      </div>
+
+      <div class="split" style="margin-top:36px">
+        <div class="panel glass rv"><h3 style="margin-bottom:12px" data-i18n="certs.h">My certificates</h3>
+          <div id="myCerts"></div>
+          <div style="margin-top:14px"><label data-i18n="certs.style">Style</label><div class="tabs" id="themes" style="margin:0"></div></div>
+          <button class="btn" id="dlBtn" disabled style="margin-top:16px" data-i18n="certs.dl">Download PNG</button>
+        </div>
+        <div class="canvas-box glass rv"><canvas class="cv" id="cert" width="1600" height="1130" aria-label="Certificate preview"></canvas></div>
+      </div>
+    </div></section>
+  </div>
+
+  <!-- ==================== PAGE 3: REDEEM ==================== -->
+  <div class="page-view hide" id="page-redeem">
+    <section><div class="wrap">
+      <div class="sec-head rv">
+        <h2 data-i18n="ver.h">Redeem & verify certificates</h2>
+        <p data-i18n="ver.p">Redeem your official award token from the admin or verify genuine certificate validity.</p>
+      </div>
+
+      <div class="tabs" style="margin-bottom:24px">
+        <button class="chip" id="tabRedeemClaim" aria-pressed="true" data-i18n="ver.tab.redeem">Redeem Token</button>
+        <button class="chip" id="tabRedeemVerify" aria-pressed="false" data-i18n="ver.tab.check">Verify Certificate ID</button>
+      </div>
+
+      <!-- Tab 1: Claim Token -->
+      <div id="redeemClaimPane">
+        <div class="split">
+          <div class="panel glass rv">
+            <h3 style="margin-bottom:8px" data-i18n="claim.h">Redeem a certificate token</h3>
+            <p class="note" style="margin:0 0 16px" data-i18n="claim.note">Enter your official TMC token to claim your certificate.</p>
+            <div class="form">
+              <div>
+                <label for="rToken" data-i18n="claim.token">Token from the admin</label>
+                <input id="rToken" placeholder="TMC-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" maxlength="30" style="font-weight:700;letter-spacing:1px">
+              </div>
+              <div id="rMsg" class="msg hide" role="status"></div>
+              <div><button class="btn primary" id="rBtn" data-i18n="claim.btn">Redeem token</button></div>
+            </div>
+          </div>
+          <div class="canvas-box glass rv">
+            <canvas class="cv" id="rCertCanvas" width="1600" height="1130" aria-label="Claimed certificate preview"></canvas>
+            <button class="btn small" id="rDlBtn" disabled style="margin-top:14px" data-i18n="certs.dl">Download PNG</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Verify ID -->
+      <div id="redeemVerifyPane" class="hide">
+        <div class="split">
+          <div class="panel glass rv">
+            <h3 style="margin-bottom:8px" data-i18n="ver.tab.check">Verify Certificate ID</h3>
+            <p class="note" style="margin:0 0 16px" data-i18n="ver.p">Enter the Certificate ID printed on a certificate to check that it is genuine.</p>
+            <div class="form">
+              <div>
+                <label for="vCode" data-i18n="ver.id">Certificate ID</label>
+                <input id="vCode" placeholder="CERT-XXXXXXXX" maxlength="20" autocomplete="off" autocapitalize="characters" style="font-weight:700;letter-spacing:1px">
+              </div>
+              <div id="vMsg" class="msg hide" role="status"></div>
+              <div><button class="btn primary" id="vBtn" data-i18n="ver.btn">Verify ID</button></div>
+            </div>
+          </div>
+          <div class="canvas-box glass rv">
+            <canvas class="cv" id="vCert" width="1600" height="1130" aria-label="Verified certificate"></canvas>
+            <button class="btn small" id="vDlBtn" disabled style="margin-top:14px" data-i18n="certs.dl">Download PNG</button>
+          </div>
+        </div>
+      </div>
+
+    </div></section>
+  </div>
+
+  <!-- ==================== PAGE 404: NOT FOUND ==================== -->
+  <div class="page-view hide" id="page-404">
+    <section><div class="wrap" style="text-align:center;padding:70px 20px 90px">
+      <div style="display:inline-block;padding:4px 14px;background:rgba(239,68,68,0.14);color:#ef4444;border-radius:9999px;font-size:13px;font-weight:700;margin-bottom:16px;border:1px solid rgba(239,68,68,0.25)">404 NOT FOUND</div>
+      <h1 style="font-size:80px;font-weight:900;margin:0;color:#ef4444;line-height:1;letter-spacing:-2px">404</h1>
+      <h2 style="font-size:28px;margin:18px 0 12px;color:var(--text)" data-i18n="err.404_title">Page Not Found</h2>
+      <p class="note" style="max-width:500px;margin:0 auto 28px;font-size:16px;line-height:1.6" data-i18n="err.404_desc">The page you are looking for does not exist or access has been restricted. Admin access is strictly permitted via authorized token URL.</p>
+      <a href="#showcase" class="btn primary" style="display:inline-block;padding:12px 28px;font-size:15px" data-i18n="err.return">Return to Showcase</a>
+    </div></section>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-content">
+    <div class="footer-brand">
+      <div class="footer-logo">
+        <span class="logo-mark">
+          <svg viewBox="0 0 8 8" aria-hidden="true" style="width:22px;height:22px"><rect width="8" height="8" rx="1.2" fill="#1f7a45"/><g fill="#3dffa0"><rect x="1" y="1" width="2" height="2"/><rect x="5" y="1" width="2" height="2"/><rect x="3" y="3" width="2" height="2"/><rect x="1" y="5" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/></g></svg>
+        </span>
+        <b style="letter-spacing:0.04em">TMC AWARDS</b>
+      </div>
+      <p class="footer-desc" data-i18n="foot.desc">Celebrating Tamil Minecraft creators with community showcase, awards voting, and official certificates.</p>
     </div>
-    <div id="rMsg" class="msg hide" role="status" style="margin-top:16px"></div>
-  </div>
-
-  <div class="split" style="margin-top:36px">
-    <div class="panel glass rv"><h3 style="margin-bottom:12px" data-i18n="certs.h">My certificates</h3>
-      <div id="myCerts"></div>
-      <div style="margin-top:14px"><label data-i18n="certs.style">Style</label><div class="tabs" id="themes" style="margin:0"></div></div>
-      <button class="btn" id="dlBtn" disabled style="margin-top:16px" data-i18n="certs.dl">Download PNG</button>
+    
+    <div class="footer-nav-col">
+      <span class="footer-heading" data-i18n="foot.navigation">Navigation</span>
+      <a href="#showcase" data-nav="showcase" data-i18n="nav.showcase">Showcase</a>
+      <a href="#dashboard" class="hide" id="footNavDash" data-nav="dashboard" data-i18n="nav.profile">My profile</a>
+      <a href="#redeem" data-nav="redeem" data-i18n="nav.redeem">Redeem</a>
     </div>
-    <div class="canvas-box glass rv"><canvas class="cv" id="cert" width="1600" height="1130" aria-label="Certificate preview"></canvas></div>
+
+    <div class="footer-nav-col">
+      <span class="footer-heading" data-i18n="foot.legal">Legal & Policies</span>
+      <button type="button" class="footer-legal-btn" id="footTermsBtn" data-i18n="foot.terms">Terms & Conditions</button>
+      <button type="button" class="footer-legal-btn" id="footPrivacyBtn" data-i18n="foot.privacy">Privacy Policy</button>
+    </div>
   </div>
-</div></section>
 
-<section id="verify"><div class="wrap">
-  <div class="sec-head rv"><h2 data-i18n="ver.h">Verify a certificate</h2><p data-i18n="ver.p">Enter the Certificate ID printed on a certificate to check that it is genuine.</p></div>
-  <div class="split">
-    <div class="panel glass rv"><div class="form">
-      <div><label for="vCode" data-i18n="ver.id">Certificate ID</label><input id="vCode" placeholder="CERT-XXXXXXXX" maxlength="20" autocomplete="off" autocapitalize="characters"></div>
-      <div id="vMsg" class="msg hide" role="status"></div>
-      <div><button class="btn primary" id="vBtn" data-i18n="ver.btn">Verify</button></div>
-    </div></div>
-    <div class="canvas-box glass rv"><canvas class="cv" id="vCert" width="1600" height="1130" aria-label="Verified certificate"></canvas></div>
+  <div class="footer-bottom">
+    <div class="wrap footer-bottom-in">
+      <div class="footer-disclaimer" data-i18n="foot">Made by the Tamil Minecraft community. Fan project, not affiliated with Mojang or Microsoft.</div>
+      <div class="footer-copy">© 2026 TMC Awards. All rights reserved.</div>
+    </div>
   </div>
-</div></section>
+</footer>
 
-<footer><div class="wrap" data-i18n="foot">Made by the Tamil Minecraft community. Fan project, not affiliated with Mojang or Microsoft.</div></footer>
-
+<!-- Authentication Dialog -->
 <dialog id="authDlg" aria-labelledby="authTitle"><div class="dlg">
   <div class="dlg-head"><h2 id="authTitle">Sign in</h2><button class="icon-btn" id="authClose" data-i18n-label="a.close" aria-label="Close">✕</button></div>
   <div class="tabs"><button class="chip" id="tabIn" aria-pressed="true" data-i18n="auth.in">Sign in</button><button class="chip" id="tabUp" aria-pressed="false" data-i18n="auth.up">Create account</button></div>
   <div class="form">
-    <div><label for="aEmail" data-i18n="a.email">Email</label><input id="aEmail" type="email" autocomplete="email" maxlength="120"></div>
-    <div><label for="aPass" data-i18n="a.pass">Password (10+ characters)</label><input id="aPass" type="password" autocomplete="current-password" maxlength="72"></div>
+    <div><label for="aEmail" data-i18n="a.email">Email</label><input id="aEmail" type="email" autocomplete="email" maxlength="120" placeholder="you@example.com"></div>
+    
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <label for="aPass" id="aPassLabel" data-i18n="a.pass" style="margin:0">Password (10+ characters)</label>
+        <button type="button" id="togglePassVis" class="btn-text" aria-label="Toggle password visibility" data-i18n="a.show_pass">Show</button>
+      </div>
+      <input id="aPass" type="password" autocomplete="current-password" maxlength="72">
+    </div>
+
+    <!-- Confirm Password (shown in Create Account mode) -->
+    <div id="aPassConfirmGroup" class="hide">
+      <label for="aPassConfirm" data-i18n="a.pass_confirm">Confirm password</label>
+      <input id="aPassConfirm" type="password" autocomplete="new-password" maxlength="72" data-i18n-ph="a.pass_confirm_ph" placeholder="Re-enter your password">
+      <div id="passMatchIndicator" class="pass-hint hide" role="status"></div>
+    </div>
+
+    <!-- Terms & Conditions / Privacy Policy Checkbox (shown in Create Account mode) -->
+    <div id="aTermsGroup" class="hide terms-check-group">
+      <label class="terms-label" for="aAgreeTerms">
+        <input type="checkbox" id="aAgreeTerms" aria-required="true">
+        <span class="terms-label-text">
+          <span data-i18n="a.agree_pre">I agree to the</span>
+          <button type="button" class="inline-legal-btn" id="authLinkTerms" data-i18n="a.terms_link">Terms & Conditions</button>
+          <span data-i18n="a.agree_and">and</span>
+          <button type="button" class="inline-legal-btn" id="authLinkPrivacy" data-i18n="a.privacy_link">Privacy Policy</button>
+        </span>
+      </label>
+    </div>
+
     <div id="aMsg" class="msg hide" role="status"></div>
     <button class="btn primary" id="aGo">Sign in</button>
     <button class="btn small" id="aForgot" data-i18n="a.forgot">Forgot password</button>
   </div>
 </div></dialog>
+
+<!-- Terms & Conditions Dialog -->
+<dialog id="termsDlg" class="dlg-wide" aria-labelledby="termsTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">📜</span>
+        <h2 id="termsTitle" data-i18n="terms.title">Terms & Conditions</h2>
+      </div>
+      <button class="icon-btn" id="termsClose" aria-label="Close">✕</button>
+    </div>
+    <div class="policy-body" id="termsBody"></div>
+    <div class="policy-foot">
+      <button class="btn primary" id="termsAgreeBtn" data-i18n="policy.close">I Understand</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Privacy Policy Dialog -->
+<dialog id="privacyDlg" class="dlg-wide" aria-labelledby="privacyTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">🛡️</span>
+        <h2 id="privacyTitle" data-i18n="privacy.title">Privacy Policy</h2>
+      </div>
+      <button class="icon-btn" id="privacyClose" aria-label="Close">✕</button>
+    </div>
+    <div class="policy-body" id="privacyBody"></div>
+    <div class="policy-foot">
+      <button class="btn primary" id="privacyAgreeBtn" data-i18n="policy.close">I Understand</button>
+    </div>
+  </div>
+<!-- Welcome Certificate Popup Dialog -->
+<dialog id="welcomeCertDlg" class="dlg-wide" aria-labelledby="welcomeCertTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="display:inline-flex;align-items:center;padding:4px 10px;background:rgba(31,157,94,0.15);color:var(--em);border-radius:9999px;font-size:12px;font-weight:700;border:1px solid rgba(31,157,94,0.3)">
+          🎉 TMC MEMBERSHIP
+        </span>
+        <h2 id="welcomeCertTitle" style="font-size:22px;margin:0" data-i18n="cert.welcome_title">Official Welcome Certificate</h2>
+      </div>
+      <button class="icon-btn" id="welcomeCertClose" aria-label="Close">✕</button>
+    </div>
+    <div class="welcome-modal-body" style="padding:16px 20px 24px">
+      <p class="note" style="margin:0 0 16px;font-size:14px;line-height:1.6" data-i18n="cert.welcome_desc">
+        Congratulations! As an official member of the Tamil Minecraft Community, your digital Welcome Certificate is ready to download and share.
+      </p>
+
+      <div class="canvas-box glass" style="margin-bottom:16px;box-shadow:var(--neu-inset-sm)">
+        <canvas class="cv" id="welcomeCertCanvas" width="1600" height="1130" aria-label="Welcome certificate"></canvas>
+      </div>
+
+      <div style="background:var(--surface-inset);border:1px solid var(--line-subtle);border-radius:14px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+        <div>
+          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase" data-i18n="cert.code_lbl">Certificate Code</span>
+          <div id="welcomeCertCode" style="font-family:monospace;font-size:16px;font-weight:800;color:var(--em);letter-spacing:1px">CERT-TMC-WELCOME</div>
+        </div>
+        <button type="button" class="btn small" id="btnCopyWelcomeCode" data-i18n="cert.copy_code">Copy Code</button>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end">
+        <button type="button" class="btn" id="btnCloseWelcomeModal" data-i18n="a.close">Close</button>
+        <button type="button" class="btn primary" id="btnDlWelcomeCert" data-i18n="cert.dl_welcome">📥 Download Certificate (PNG)</button>
+      </div>
+    </div>
+  </div>
+</dialog>
 
 <dialog id="profDlg" aria-label="Creator profile"><div class="dlg" id="profBody"></div></dialog>
 

@@ -4,33 +4,84 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Admin</title>
+<title>Admin - TMC Awards</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;800&family=Press+Start+2P&family=Noto+Sans+Tamil:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Noto+Sans+Tamil:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<script>
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('token') !== 'ADMINOFTMC') {
+      document.title = '404 - Page Not Found';
+      window.__BLOCK_ADMIN = true;
+      document.documentElement.innerHTML = '<head><title>404 - Page Not Found</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0b0f17;color:#f1f5f9;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center}.box{max-width:480px;padding:48px 24px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.5)}.badge{display:inline-block;padding:4px 12px;background:rgba(239,68,68,0.15);color:#f87171;border-radius:9999px;font-size:13px;font-weight:700;margin-bottom:16px;border:1px solid rgba(239,68,68,0.3)}h1{font-size:76px;margin:0;color:#ef4444;font-weight:900;line-height:1;letter-spacing:-2px}h2{font-size:24px;margin:16px 0 10px;color:#f8fafc;font-weight:700}p{color:#94a3b8;font-size:15px;line-height:1.6;margin:0 0 28px}.btn{display:inline-block;padding:12px 26px;background:#1f9d5e;color:#fff;text-decoration:none;border-radius:12px;font-weight:700}</style></head><body><div class="box"><div class="badge">404 ERROR</div><h1>404</h1><h2>Page Not Found</h2><p>The requested page does not exist or access has been restricted. Please check the URL and try again.</p><a href="/" class="btn">Return to TMC Showcase</a></div></body>';
+      window.stop && window.stop();
+      return;
+    }
+    try {
+      var saved = localStorage.getItem('tmc_theme');
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch(e) {}
+  })();
+</script>
 </head>
 <body data-title="ad.title">
-<nav><div class="wrap nav-in">
-  <span class="logo"><span data-i18n="ad.title">Showcase admin</span></span>
+<nav id="topNav"><div class="wrap nav-in">
+  <a class="logo" href="/" aria-label="Home">
+    <span class="logo-mark" id="navIconSlot">
+      <svg viewBox="0 0 8 8" aria-hidden="true"><rect width="8" height="8" rx="1.2" fill="#1f7a45"/><g fill="#3dffa0"><rect x="1" y="1" width="2" height="2"/><rect x="5" y="1" width="2" height="2"/><rect x="3" y="3" width="2" height="2"/><rect x="1" y="5" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/></g></svg>
+    </span>
+    <span class="logo-text">
+      <b class="logo-brand">TMC AWARDS</b>
+      <span class="logo-sub">Admin Panel</span>
+    </span>
+  </a>
+  <a href="/" class="btn small" style="padding:6px 14px">← Back to Site</a>
   <span style="margin-left:auto"></span>
+  <span class="admin-timer-pill hide" id="admSessionTimer" style="margin-right:10px">
+    ⏱ Session: <b id="admTimeLeft" style="margin-left:4px">05:00</b>
+  </span>
+  <button class="theme-toggle" id="themeBtn" aria-label="Toggle dark/light mode" title="Toggle theme">
+    <span class="theme-icon-light">☀️</span>
+    <span class="theme-icon-dark">🌙</span>
+  </button>
   <button class="lang" id="langBtn" aria-label="Language">தமிழ்</button>
   <button class="btn small hide" id="outBtn" data-i18n="auth.out">Sign out</button>
 </div></nav>
 
 <main class="wrap" style="padding-top:36px;padding-bottom:60px">
 
-<div id="stepLogin" class="panel glass rv" style="max-width:440px">
-  <h2 style="margin-bottom:18px;font-size:26px" data-i18n="ad.signin">Admin sign in</h2>
+<div id="stepLogin" class="panel glass rv" style="max-width:480px;margin:20px auto">
+  <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(30,167,99,0.12);color:var(--em);border-radius:9999px;font-size:12px;font-weight:700;margin-bottom:14px;border:1px solid rgba(30,167,99,0.25)">
+    🔒 TMC ADMIN ACCESS
+  </div>
+  <h2 style="margin-bottom:8px;font-size:26px" data-i18n="ad.signin">Admin verification</h2>
+  <p class="note" style="margin:0 0 18px">This panel only opens with secret token URL (e.g. <code>?token=ADMINOFTMC</code>) or token verification. Session automatically expires after 5 minutes.</p>
+  
   <div class="form">
+    <div>
+      <label for="lToken" data-i18n="ad.token_label">Secret Admin Token</label>
+      <input id="lToken" placeholder="ADMINOFTMC" autocomplete="off" autocapitalize="characters" style="font-weight:700;letter-spacing:1px">
+    </div>
+    <button class="btn primary" id="lTokenGo" data-i18n="ad.token_go">Login with Secret Token</button>
+
+    <div style="display:flex;align-items:center;gap:12px;margin:8px 0">
+      <div style="flex:1;height:1px;background:var(--line-subtle)"></div>
+      <span style="font-size:12px;color:var(--muted);font-weight:600">OR WITH CREDENTIALS</span>
+      <div style="flex:1;height:1px;background:var(--line-subtle)"></div>
+    </div>
+
     <div><label for="lEmail" data-i18n="a.email">Email</label><input id="lEmail" type="email" autocomplete="email"></div>
     <div><label for="lPass">Password</label><input id="lPass" type="password" autocomplete="current-password"></div>
     <div id="lMsg" class="msg hide" role="status"></div>
-    <button class="btn primary" id="lGo" data-i18n="ad.continue">Continue</button>
+    <button class="btn" id="lGo" data-i18n="ad.continue">Continue with Email</button>
   </div>
 </div>
 
-<div id="stepMfa" class="panel glass hide" style="max-width:440px">
+<div id="stepMfa" class="panel glass hide" style="max-width:440px;margin:20px auto">
   <h2 style="margin-bottom:12px;font-size:26px" data-i18n="ad.mfa.h">Two-step check</h2>
   <div class="form">
     <div id="mfaEnroll" class="hide">
@@ -47,10 +98,13 @@
 <div id="app" class="hide">
   <div class="tabs">
     <button class="chip" data-tab="certs" aria-pressed="true" data-i18n="ad.tab.certs">Certificates</button>
+    <button class="chip" data-tab="creators" aria-pressed="false" data-i18n="ad.tab.creators">Profiles</button>
+    <button class="chip" data-tab="users" aria-pressed="false" data-i18n="ad.tab.users">User Accounts</button>
     <button class="chip" data-tab="types" aria-pressed="false" data-i18n="ad.tab.types">Certificate types</button>
-    <button class="chip" data-tab="creators" aria-pressed="false" data-i18n="ad.tab.creators">Creators</button>
+    <button class="chip" data-tab="settings" aria-pressed="false" data-i18n="ad.tab.settings">Server Icon & Settings</button>
   </div>
 
+  <!-- TAB 1: CERTIFICATES -->
   <div id="tab-certs">
     <div class="split">
       <div class="panel glass">
@@ -58,8 +112,8 @@
         <div class="form">
           <div><label for="cPick" data-i18n="ad.pick">Pick a creator (optional)</label><select id="cPick"></select></div>
           <div class="row2">
-            <div><label for="cName" data-i18n="ad.cname">Name on certificate</label><input id="cName" maxlength="60"></div>
-            <div><label for="cChannel" data-i18n="ad.cchannel">Channel name</label><input id="cChannel" maxlength="60"></div>
+            <div><label for="cName" data-i18n="ad.cname">Name on certificate</label><input id="cName" maxlength="60" placeholder="e.g. Santhosh"></div>
+            <div><label for="cChannel" data-i18n="ad.cchannel">Channel name</label><input id="cChannel" maxlength="60" placeholder="e.g. Block Thambi"></div>
           </div>
           <div><label for="cType" data-i18n="ad.type">Certificate type</label><select id="cType"></select></div>
           <div class="row2">
@@ -75,7 +129,7 @@
           <div id="cOutMsg" class="msg hide" role="status"></div>
           <div id="cOut" class="hide">
             <div class="token-out" id="cToken"></div>
-            <p class="note" data-i18n="ad.once">Shown once. Copy it now.</p>
+            <p class="note" data-i18n="ad.once">Shown once. Copy it now and give it to the creator to redeem.</p>
             <button class="btn small" id="cCopy" data-i18n="ad.copy">Copy token</button>
           </div>
           <button class="btn primary" id="cMake" data-i18n="ad.make">Generate token</button>
@@ -92,6 +146,32 @@
     </div>
   </div>
 
+  <!-- TAB 2: PROFILES -->
+  <div id="tab-creators" class="panel glass hide">
+    <h3 style="margin-bottom:14px" data-i18n="ad.accounts">Creator profiles</h3>
+    <div id="uList"></div>
+  </div>
+
+  <!-- TAB 3: USER ACCOUNTS -->
+  <div id="tab-users" class="panel glass hide">
+    <h3 style="margin-bottom:14px" data-i18n="ad.tab.users">User Accounts</h3>
+    <div class="tbl">
+      <table>
+        <thead>
+          <tr>
+            <th>User ID</th>
+            <th>Email</th>
+            <th>Registered</th>
+            <th>Channel / Handle</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="userTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 4: CERTIFICATE TYPES -->
   <div id="tab-types" class="hide">
     <p class="note" style="margin:0 0 20px" data-i18n="ad.types.p">Create the kinds of certificates you give out.</p>
     <div class="split">
@@ -130,10 +210,36 @@
     </div>
   </div>
 
-  <div id="tab-creators" class="panel glass hide">
-    <h3 style="margin-bottom:14px" data-i18n="ad.accounts">Creator accounts</h3>
-    <div id="uList"></div>
+  <!-- TAB 5: SERVER ICON & SETTINGS -->
+  <div id="tab-settings" class="panel glass hide">
+    <h3 style="margin-bottom:8px" data-i18n="ad.server_icon_h">Replace Server / Website Icon</h3>
+    <p class="note" style="margin:0 0 20px" data-i18n="ad.server_icon_p">Upload or set an image/SVG for the TMC Awards logo across the site.</p>
+    
+    <div class="form" style="max-width:540px">
+      <div style="display:flex;align-items:center;gap:18px">
+        <div id="serverIconSlotAdmin" style="width:54px;height:54px;border-radius:14px;background:var(--surface-inset);display:grid;place-items:center;box-shadow:var(--neu-inset-sm);overflow:hidden">
+          <svg viewBox="0 0 8 8" style="width:36px;height:36px"><rect width="8" height="8" rx="1.2" fill="#1f7a45"/><g fill="#3dffa0"><rect x="1" y="1" width="2" height="2"/><rect x="5" y="1" width="2" height="2"/><rect x="3" y="3" width="2" height="2"/><rect x="1" y="5" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/></g></svg>
+        </div>
+        <div style="flex:1">
+          <label for="adIconFile">Upload Icon (PNG / SVG / JPG)</label>
+          <input type="file" id="adIconFile" accept="image/*" style="padding:10px">
+        </div>
+      </div>
+
+      <div>
+        <label for="adIconUrl">Or Icon URL</label>
+        <input id="adIconUrl" placeholder="https://example.com/logo.png" maxlength="300">
+      </div>
+
+      <div id="adIconMsg" class="msg hide" role="status"></div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button class="btn primary" id="adIconSave" data-i18n="ad.server_icon_btn">Update Server Icon</button>
+        <button class="btn" id="adIconReset" data-i18n="ad.server_icon_reset">Reset to Default</button>
+      </div>
+    </div>
   </div>
+
 </div>
 </main>
 
