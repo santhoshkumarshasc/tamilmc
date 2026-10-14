@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;800&family=Press+Start+2P&family=Noto+Sans+Tamil:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-title="ad.title">
+<nav><div class="wrap nav-in">
+  <span class="logo"><span data-i18n="ad.title">Showcase admin</span></span>
+  <span style="margin-left:auto"></span>
+  <button class="lang" id="langBtn" aria-label="Language">தமிழ்</button>
+  <button class="btn small hide" id="outBtn" data-i18n="auth.out">Sign out</button>
+</div></nav>
+
+<main class="wrap" style="padding-top:36px;padding-bottom:60px">
+
+<div id="stepLogin" class="panel glass rv" style="max-width:440px">
+  <h2 style="margin-bottom:18px;font-size:26px" data-i18n="ad.signin">Admin sign in</h2>
+  <div class="form">
+    <div><label for="lEmail" data-i18n="a.email">Email</label><input id="lEmail" type="email" autocomplete="email"></div>
+    <div><label for="lPass">Password</label><input id="lPass" type="password" autocomplete="current-password"></div>
+    <div id="lMsg" class="msg hide" role="status"></div>
+    <button class="btn primary" id="lGo" data-i18n="ad.continue">Continue</button>
+  </div>
+</div>
+
+<div id="stepMfa" class="panel glass hide" style="max-width:440px">
+  <h2 style="margin-bottom:12px;font-size:26px" data-i18n="ad.mfa.h">Two-step check</h2>
+  <div class="form">
+    <div id="mfaEnroll" class="hide">
+      <p class="note" style="margin-top:0" data-i18n="ad.mfa.scan">Scan this code with an authenticator app, then enter the 6-digit code.</p>
+      <div class="qr"><img id="mfaQr" alt="QR"></div>
+      <p class="note" style="text-align:center"><span data-i18n="ad.mfa.manual">Or enter this key manually:</span> <b id="mfaSecret" style="word-break:break-all"></b></p>
+    </div>
+    <div><label for="mCode" data-i18n="ad.code">6-digit code</label><input id="mCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div>
+    <div id="mMsg" class="msg hide" role="status"></div>
+    <button class="btn primary" id="mGo" data-i18n="ad.verify">Verify</button>
+  </div>
+</div>
+
+<div id="app" class="hide">
+  <div class="tabs">
+    <button class="chip" data-tab="certs" aria-pressed="true" data-i18n="ad.tab.certs">Certificates</button>
+    <button class="chip" data-tab="types" aria-pressed="false" data-i18n="ad.tab.types">Certificate types</button>
+    <button class="chip" data-tab="creators" aria-pressed="false" data-i18n="ad.tab.creators">Creators</button>
+  </div>
+
+  <div id="tab-certs">
+    <div class="split">
+      <div class="panel glass">
+        <h3 style="margin-bottom:16px" data-i18n="ad.create">Create certificate</h3>
+        <div class="form">
+          <div><label for="cPick" data-i18n="ad.pick">Pick a creator (optional)</label><select id="cPick"></select></div>
+          <div class="row2">
+            <div><label for="cName" data-i18n="ad.cname">Name on certificate</label><input id="cName" maxlength="60"></div>
+            <div><label for="cChannel" data-i18n="ad.cchannel">Channel name</label><input id="cChannel" maxlength="60"></div>
+          </div>
+          <div><label for="cType" data-i18n="ad.type">Certificate type</label><select id="cType"></select></div>
+          <div class="row2">
+            <div><label for="cAward" data-i18n="ad.award">Award</label><input id="cAward" maxlength="60"></div>
+            <div><label for="cAwardTa" data-i18n="ad.award_ta">Award in Tamil (optional)</label><input id="cAwardTa" maxlength="60"></div>
+          </div>
+          <div class="row2">
+            <div><label for="cTitle" data-i18n="ad.ctitle">Content title (optional)</label><input id="cTitle" maxlength="100"></div>
+            <div><label for="cUrl" data-i18n="ad.curl">Content link (optional)</label><input id="cUrl" inputmode="url" maxlength="200" placeholder="https://..."></div>
+          </div>
+          <div><label for="cMsg" data-i18n="ad.cmsg">Message (optional)</label><textarea id="cMsg" maxlength="140"></textarea></div>
+          <div><label for="cTheme" data-i18n="ad.ctheme">Certificate style</label><select id="cTheme"></select></div>
+          <div id="cOutMsg" class="msg hide" role="status"></div>
+          <div id="cOut" class="hide">
+            <div class="token-out" id="cToken"></div>
+            <p class="note" data-i18n="ad.once">Shown once. Copy it now.</p>
+            <button class="btn small" id="cCopy" data-i18n="ad.copy">Copy token</button>
+          </div>
+          <button class="btn primary" id="cMake" data-i18n="ad.make">Generate token</button>
+        </div>
+      </div>
+      <div>
+        <div class="canvas-box glass"><canvas class="cv" id="aCert" width="1600" height="1130" aria-label="Certificate preview"></canvas></div>
+        <button class="btn" id="aDl" disabled style="margin-top:16px" data-i18n="ad.dlprev">Download preview PNG</button>
+      </div>
+    </div>
+    <div class="panel glass" style="margin-top:32px">
+      <h3 style="margin-bottom:14px" data-i18n="ad.all">All certificates</h3>
+      <div class="tbl"><table><thead><tr><th data-i18n="ad.th.id">ID</th><th data-i18n="ad.th.rec">Recipient</th><th data-i18n="ad.th.type">Type</th><th data-i18n="ad.th.award">Award</th><th data-i18n="ad.th.status">Status</th><th data-i18n="ad.th.by">Claimed by</th><th></th></tr></thead><tbody id="cBody"></tbody></table></div>
+    </div>
+  </div>
+
+  <div id="tab-types" class="hide">
+    <p class="note" style="margin:0 0 20px" data-i18n="ad.types.p">Create the kinds of certificates you give out.</p>
+    <div class="split">
+      <div class="panel glass">
+        <h3 id="typeFormTitle" style="margin-bottom:16px" data-i18n="ad.type.new">New type</h3>
+        <div class="form">
+          <div class="row2">
+            <div><label for="tName" data-i18n="ad.type.name">Type name</label><input id="tName" maxlength="40"></div>
+            <div><label for="tNameTa" data-i18n="ad.type.name_ta">Type name in Tamil</label><input id="tNameTa" maxlength="40"></div>
+          </div>
+          <div class="row2">
+            <div><label for="tHeading" data-i18n="ad.type.heading">Heading on certificate</label><input id="tHeading" maxlength="80"></div>
+            <div><label for="tHeadingTa" data-i18n="ad.type.heading_ta">Heading in Tamil</label><input id="tHeadingTa" maxlength="80"></div>
+          </div>
+          <div class="row2">
+            <div><label for="tAward" data-i18n="ad.type.award">Default award</label><input id="tAward" maxlength="60"></div>
+            <div><label for="tAwardTa" data-i18n="ad.type.award_ta">Default award in Tamil</label><input id="tAwardTa" maxlength="60"></div>
+          </div>
+          <div class="row2">
+            <div><label for="tTheme" data-i18n="ad.type.theme">Default style</label><select id="tTheme"></select></div>
+            <div><label for="tIcon" data-i18n="ad.type.icon">Icon</label><select id="tIcon"></select></div>
+          </div>
+          <div><label for="tMsg" data-i18n="ad.type.msg">Default message</label><textarea id="tMsg" maxlength="140"></textarea></div>
+          <div style="display:flex;gap:12px;align-items:center"><input type="checkbox" id="tActive" checked><label for="tActive" style="margin:0" data-i18n="ad.type.active">Active</label></div>
+          <div id="tMsgOut" class="msg hide" role="status"></div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <button class="btn primary" id="tSave" data-i18n="ad.type.save">Save type</button>
+            <button class="btn" id="tNew" data-i18n="ad.type.new">New type</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="canvas-box glass"><canvas class="cv" id="tCert" width="1600" height="1130" aria-label="Type preview"></canvas></div>
+        <div class="panel glass" style="margin-top:22px"><div id="typeList"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-creators" class="panel glass hide">
+    <h3 style="margin-bottom:14px" data-i18n="ad.accounts">Creator accounts</h3>
+    <div id="uList"></div>
+  </div>
+</div>
+</main>
+
+<dialog id="editDlg" aria-labelledby="editTitle"><div class="dlg">
+  <div class="dlg-head"><h2 id="editTitle" data-i18n="ad.edit.h">Edit creator</h2><button class="icon-btn" id="editClose" data-i18n-label="a.close" aria-label="Close">✕</button></div>
+  <div class="form">
+    <div><label for="eName" data-i18n="ad.name">Name</label><input id="eName" maxlength="40"></div>
+    <div><label for="eChannel" data-i18n="ad.chan">Channel</label><input id="eChannel" maxlength="40"></div>
+    <div><label for="eBio" data-i18n="ad.bio">Bio</label><textarea id="eBio" maxlength="300"></textarea></div>
+    <div style="display:flex;gap:12px;align-items:center"><input type="checkbox" id="eHidden"><label for="eHidden" style="margin:0" data-i18n="ad.hidecheck">Hide from the public showcase</label></div>
+    <div id="eMsg" class="msg hide" role="status"></div>
+    <button class="btn primary" id="eSave" data-i18n="ad.save">Save changes</button>
+  </div>
+</div></dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="i18n.js"></script>
+<script src="fx.js"></script>
+<script src="shared.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

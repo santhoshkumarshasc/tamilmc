@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tamil Minecraft Creators Showcase</title>
+<meta name="description" content="Tamil Minecraft creators: build your profile, get discovered, and earn certificates.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;800&family=Press+Start+2P&family=Noto+Sans+Tamil:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<nav><div class="wrap nav-in">
+  <a class="logo" href="#top" aria-label="Home">
+    <svg viewBox="0 0 8 8" aria-hidden="true"><rect width="8" height="8" rx="1.2" fill="#1f7a45"/><g fill="#3dffa0"><rect x="1" y="1" width="2" height="2"/><rect x="5" y="1" width="2" height="2"/><rect x="3" y="3" width="2" height="2"/><rect x="1" y="5" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/></g></svg>
+    <span>TN BLOCKS</span></a>
+  <div class="links">
+    <a href="#showcase" data-i18n="nav.showcase">Showcase</a><a href="#dashboard" id="navDash" data-i18n="nav.profile">My profile</a><a href="#verify" data-i18n="nav.verify">Verify</a>
+  </div>
+  <button class="lang" id="langBtn" aria-label="Language">தமிழ்</button>
+  <button class="btn small primary" id="authBtn" style="flex:none" data-i18n="auth.in">Sign in</button>
+</div></nav>
+
+<header class="hero" id="top"><div class="wrap">
+  <div class="hero-grid">
+    <div>
+      <span class="tag-pill" data-i18n="hero.tag">Tamil Minecraft creators</span>
+      <h1><span data-i18n="hero.t1">Your Tamil Minecraft channel,</span> <span class="grad-text" data-i18n="hero.t2">your own profile</span></h1>
+      <p data-i18n="hero.p">Create an account, design your public profile, and appear in the showcase right away. Win an award and claim your certificate with a token.</p>
+      <div class="cta">
+        <button class="btn primary" id="heroJoin" data-i18n="hero.cta1">Create my profile</button>
+        <a class="btn" href="#showcase" data-i18n="hero.cta2">Browse creators</a>
+      </div>
+      <div class="stats">
+        <div class="stat glass"><b id="sCreators">0</b><small data-i18n="stat.creators">Creators</small></div>
+        <div class="stat glass"><b id="sCerts">0</b><small data-i18n="stat.certs">Certificates claimed</small></div>
+      </div>
+    </div>
+    <div class="scene" aria-hidden="true">
+      <div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="cube-shadow"></div>
+    </div>
+  </div>
+</div></header>
+
+<section id="showcase"><div class="wrap">
+  <div class="sec-head rv"><h2 data-i18n="show.h">Creator showcase</h2><p data-i18n="show.p">Open a card to see the full profile. Sign in to like your favourites.</p></div>
+  <div class="toolbar rv">
+    <input class="search" style="max-width:360px" id="search" type="search" data-i18n-ph="show.search" placeholder="Search creators" data-i18n-label="show.search" aria-label="Search creators" maxlength="40">
+  </div>
+  <div class="grid" id="grid"></div>
+</div></section>
+
+<section id="dashboard" class="hide"><div class="wrap">
+  <div class="sec-head rv"><h2 data-i18n="dash.h">My profile</h2><p data-i18n="dash.p">Changes go live as soon as you save. No review needed.</p></div>
+  <div class="split">
+    <div class="panel glass rv"><div class="form">
+      <div><label for="pHandle" data-i18n="f.handle">Handle (cannot change later)</label><input id="pHandle" maxlength="24" placeholder="block_thambi" autocomplete="off"></div>
+      <div class="row2">
+        <div><label for="pName" data-i18n="f.name">Your name</label><input id="pName" maxlength="40"></div>
+        <div><label for="pChannel" data-i18n="f.channel">Channel name</label><input id="pChannel" maxlength="40"></div>
+      </div>
+      <div><label for="pUrl" data-i18n="f.url">Channel link</label><input id="pUrl" inputmode="url" placeholder="https://youtube.com/@you" maxlength="200"></div>
+      <div><label for="pBio" data-i18n="f.bio">About you</label><textarea id="pBio" maxlength="300" data-i18n-ph="f.bio.ph"></textarea></div>
+      <div><label data-i18n="f.icon">Icon</label><div class="swatches" id="pEmojis"></div></div>
+      <div class="row2">
+        <div><label data-i18n="f.accent">Accent colour</label><div class="swatches" id="pSwatches"></div></div>
+        <div><label for="pColor" data-i18n="f.custom">Custom colour</label><input id="pColor" type="color" value="#1f7a45"></div>
+      </div>
+      <div><label for="pStyle" data-i18n="f.style">Card style</label><select id="pStyle"></select></div>
+      <div><label data-i18n="f.links">Links (up to 4)</label><div class="form" id="pLinks"></div></div>
+      <div style="display:flex;gap:12px;align-items:center"><input type="checkbox" id="pPublic" checked><label for="pPublic" style="margin:0" data-i18n="f.public">Show my profile in the showcase</label></div>
+      <div id="pMsg" class="msg hide" role="status"></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button class="btn primary" id="pSave" data-i18n="f.save">Save profile</button>
+        <button class="btn danger" id="pDelete" data-i18n="f.delete">Delete account</button>
+      </div>
+    </div></div>
+    <div class="rv">
+      <p class="note" style="margin-top:0" data-i18n="f.preview">Live preview</p>
+      <div id="pPreview"></div>
+    </div>
+  </div>
+
+  <div class="panel glass rv" style="margin-top:36px">
+    <h3 style="margin-bottom:16px" data-i18n="claim.h">Claim a certificate</h3>
+    <div class="row2">
+      <div><label for="rToken" data-i18n="claim.token">Token from the admin</label><input id="rToken" placeholder="TMC-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" maxlength="30"></div>
+      <div style="align-self:end"><button class="btn primary" id="rBtn" data-i18n="claim.btn">Redeem token</button></div>
+    </div>
+    <div id="rMsg" class="msg hide" role="status" style="margin-top:16px"></div>
+  </div>
+
+  <div class="split" style="margin-top:36px">
+    <div class="panel glass rv"><h3 style="margin-bottom:12px" data-i18n="certs.h">My certificates</h3>
+      <div id="myCerts"></div>
+      <div style="margin-top:14px"><label data-i18n="certs.style">Style</label><div class="tabs" id="themes" style="margin:0"></div></div>
+      <button class="btn" id="dlBtn" disabled style="margin-top:16px" data-i18n="certs.dl">Download PNG</button>
+    </div>
+    <div class="canvas-box glass rv"><canvas class="cv" id="cert" width="1600" height="1130" aria-label="Certificate preview"></canvas></div>
+  </div>
+</div></section>
+
+<section id="verify"><div class="wrap">
+  <div class="sec-head rv"><h2 data-i18n="ver.h">Verify a certificate</h2><p data-i18n="ver.p">Enter the Certificate ID printed on a certificate to check that it is genuine.</p></div>
+  <div class="split">
+    <div class="panel glass rv"><div class="form">
+      <div><label for="vCode" data-i18n="ver.id">Certificate ID</label><input id="vCode" placeholder="CERT-XXXXXXXX" maxlength="20" autocomplete="off" autocapitalize="characters"></div>
+      <div id="vMsg" class="msg hide" role="status"></div>
+      <div><button class="btn primary" id="vBtn" data-i18n="ver.btn">Verify</button></div>
+    </div></div>
+    <div class="canvas-box glass rv"><canvas class="cv" id="vCert" width="1600" height="1130" aria-label="Verified certificate"></canvas></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap" data-i18n="foot">Made by the Tamil Minecraft community. Fan project, not affiliated with Mojang or Microsoft.</div></footer>
+
+<dialog id="authDlg" aria-labelledby="authTitle"><div class="dlg">
+  <div class="dlg-head"><h2 id="authTitle">Sign in</h2><button class="icon-btn" id="authClose" data-i18n-label="a.close" aria-label="Close">✕</button></div>
+  <div class="tabs"><button class="chip" id="tabIn" aria-pressed="true" data-i18n="auth.in">Sign in</button><button class="chip" id="tabUp" aria-pressed="false" data-i18n="auth.up">Create account</button></div>
+  <div class="form">
+    <div><label for="aEmail" data-i18n="a.email">Email</label><input id="aEmail" type="email" autocomplete="email" maxlength="120"></div>
+    <div><label for="aPass" data-i18n="a.pass">Password (10+ characters)</label><input id="aPass" type="password" autocomplete="current-password" maxlength="72"></div>
+    <div id="aMsg" class="msg hide" role="status"></div>
+    <button class="btn primary" id="aGo">Sign in</button>
+    <button class="btn small" id="aForgot" data-i18n="a.forgot">Forgot password</button>
+  </div>
+</div></dialog>
+
+<dialog id="profDlg" aria-label="Creator profile"><div class="dlg" id="profBody"></div></dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="i18n.js"></script>
+<script src="fx.js"></script>
+<script src="shared.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
