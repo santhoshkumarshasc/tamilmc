@@ -9,6 +9,7 @@ import {
   Certificate,
   CertificateType,
   UserAccount,
+  AdminUser,
   AuthSession,
   DatabaseState,
   AdminResetDataResult,
@@ -16,6 +17,29 @@ import {
 } from './types.js';
 
 export const STORAGE_KEY = 'tmc_live_db_v3';
+
+export const INITIAL_SEED_ADMINS: AdminUser[] = [
+  {
+    id: 'admin-lead-1',
+    email: 'santhoshkumarshasc@gmail.com',
+    name: 'Santhosh (Lead Admin)',
+    role: 'super_admin',
+    created_at: '2026-09-01T00:00:00.000Z',
+    created_by: 'system',
+    notes: 'Primary Community Administrator',
+    is_active: true
+  },
+  {
+    id: 'admin-lead-2',
+    email: 'admin@tmcawards.org',
+    name: 'TMC Awards Operations',
+    role: 'super_admin',
+    created_at: '2026-09-01T00:00:00.000Z',
+    created_by: 'system',
+    notes: 'Main Community Operations Account',
+    is_active: true
+  }
+];
 
 export const DEFAULT_TYPES: CertificateType[] = [
   {
@@ -347,6 +371,9 @@ export function createFallbackClient() {
         if (!parsed.types || parsed.types.length === 0) {
           parsed.types = JSON.parse(JSON.stringify(DEFAULT_TYPES));
         }
+        if (!parsed.admins || parsed.admins.length === 0) {
+          parsed.admins = JSON.parse(JSON.stringify(INITIAL_SEED_ADMINS));
+        }
         if (!parsed.votes) parsed.votes = {};
         if (!parsed.likes) parsed.likes = {};
         saveDb(parsed);
@@ -356,6 +383,7 @@ export function createFallbackClient() {
 
     const init: DatabaseState = {
       users: [],
+      admins: JSON.parse(JSON.stringify(INITIAL_SEED_ADMINS)),
       profiles: JSON.parse(JSON.stringify(INITIAL_SEED_PROFILES)),
       certs: createInitialSeedCerts(),
       types: JSON.parse(JSON.stringify(DEFAULT_TYPES)),
@@ -638,6 +666,62 @@ export function createFallbackClient() {
       if (fn === 'admin_list_certificates') return { data: db.certs, error: null };
       if (fn === 'admin_list_types') return { data: db.types, error: null };
       if (fn === 'admin_list_users') return { data: db.users, error: null };
+      if (fn === 'admin_list_admins') {
+        if (!db.admins || db.admins.length === 0) db.admins = JSON.parse(JSON.stringify(INITIAL_SEED_ADMINS));
+        return { data: db.admins, error: null };
+      }
+
+      if (fn === 'admin_create_admin') {
+        if (!isAdmin) return { data: null, error: { message: 'Unauthorized' } };
+        const email = (params.email || '').trim().toLowerCase();
+        const name = (params.name || '').trim();
+        const role = params.role || 'moderator';
+        const notes = (params.notes || '').trim();
+
+        if (!email || !email.includes('@')) {
+          return { data: null, error: { message: 'A valid email address is required' } };
+        }
+        if (!name || name.length < 2) {
+          return { data: null, error: { message: 'Administrator full name is required (min 2 characters)' } };
+        }
+
+        if (!db.admins || db.admins.length === 0) db.admins = JSON.parse(JSON.stringify(INITIAL_SEED_ADMINS));
+        if (db.admins.some(a => a.email.toLowerCase() === email)) {
+          return { data: null, error: { message: 'An administrator with this email already exists' } };
+        }
+
+        const newAdmin: AdminUser = {
+          id: 'admin-' + Date.now(),
+          email,
+          name,
+          role,
+          notes,
+          created_at: new Date().toISOString(),
+          created_by: db.session?.user?.email || 'Lead Administrator',
+          is_active: true
+        };
+
+        db.admins.unshift(newAdmin);
+        saveDb(db);
+        return { data: newAdmin, error: null };
+      }
+
+      if (fn === 'admin_delete_admin') {
+        if (!isAdmin) return { data: null, error: { message: 'Unauthorized' } };
+        const targetId = params.p_id;
+        if (!db.admins || db.admins.length === 0) db.admins = JSON.parse(JSON.stringify(INITIAL_SEED_ADMINS));
+        const target = db.admins.find(a => a.id === targetId || a.email === targetId);
+        if (!target) return { data: null, error: { message: 'Administrator not found' } };
+
+        const curEmail = db.session?.user?.email?.toLowerCase();
+        if (curEmail && target.email.toLowerCase() === curEmail) {
+          return { data: null, error: { message: 'Cannot remove your own active administrator account' } };
+        }
+
+        db.admins = db.admins.filter(a => a.id !== target.id);
+        saveDb(db);
+        return { data: { success: true }, error: null };
+      }
 
       // ==========================================
       // RESET DATA RPC (Admin Dashboard Feature)

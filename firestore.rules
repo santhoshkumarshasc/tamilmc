@@ -92,7 +92,7 @@ service cloud.firestore {
     // Admins Collection
     match /admins/{adminId} {
       allow read: if isAdmin();
-      allow write: if false;
+      allow create, update, delete: if isAdmin();
     }
   }
 }

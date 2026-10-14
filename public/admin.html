@@ -23,7 +23,7 @@
 <nav id="topNav"><div class="wrap nav-in">
   <a class="logo" href="/" aria-label="Home">
     <span class="logo-mark" id="navIconSlot">
-      <svg viewBox="0 0 8 8" aria-hidden="true"><rect width="8" height="8" rx="1.2" fill="#1f7a45"/><g fill="#3dffa0"><rect x="1" y="1" width="2" height="2"/><rect x="5" y="1" width="2" height="2"/><rect x="3" y="3" width="2" height="2"/><rect x="1" y="5" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/></g></svg>
+      <img src="/logo.png" alt="TMC Awards" class="nav-brand-img" style="width:28px;height:28px;object-fit:cover;border-radius:6px;display:block">
     </span>
     <span class="logo-text">
       <b class="logo-brand">TMC AWARDS</b>
@@ -50,14 +50,14 @@
     🔒 TMC ADMIN ACCESS
   </div>
   <h2 style="margin-bottom:8px;font-size:26px" data-i18n="ad.signin">Admin verification</h2>
-  <p class="note" style="margin:0 0 18px">This panel only opens with secret token URL (e.g. <code>?token=ADMINOFTMC</code>) or token verification. Session automatically expires after 5 minutes.</p>
+  <p class="note" style="margin:0 0 18px" data-i18n="ad.signin_note">Restricted area for authorized administrators only. Enter your administrator key or continue with your credentials. Session automatically expires after 5 minutes of inactivity.</p>
   
   <div class="form">
     <div>
-      <label for="lToken" data-i18n="ad.token_label">Secret Admin Token</label>
-      <input id="lToken" placeholder="ADMINOFTMC" autocomplete="off" autocapitalize="characters" style="font-weight:700;letter-spacing:1px">
+      <label for="lToken" data-i18n="ad.token_label">Admin Security Key</label>
+      <input id="lToken" type="password" placeholder="Enter administrator key" autocomplete="current-password" style="font-weight:700;letter-spacing:1px">
     </div>
-    <button class="btn primary" id="lTokenGo" data-i18n="ad.token_go">Login with Secret Token</button>
+    <button class="btn primary" id="lTokenGo" data-i18n="ad.token_go">Login with Security Key</button>
 
     <div style="display:flex;align-items:center;gap:12px;margin:8px 0">
       <div style="flex:1;height:1px;background:var(--line-subtle)"></div>
@@ -92,6 +92,7 @@
     <button class="chip" data-tab="creators" aria-pressed="false" data-i18n="ad.tab.creators">Profiles</button>
     <button class="chip" data-tab="users" aria-pressed="false" data-i18n="ad.tab.users">User Accounts</button>
     <button class="chip" data-tab="types" aria-pressed="false" data-i18n="ad.tab.types">Certificate types</button>
+    <button class="chip" data-tab="admins" aria-pressed="false" data-i18n="ad.tab.admins">Administrators</button>
     <button class="chip" data-tab="settings" aria-pressed="false" data-i18n="ad.tab.settings">Server Icon & Settings</button>
   </div>
 
@@ -201,7 +202,66 @@
     </div>
   </div>
 
-  <!-- TAB 5: SERVER ICON & SETTINGS -->
+  <!-- TAB 5: ADMINISTRATORS (ADMIN CREATE ANOTHER ADMIN) -->
+  <div id="tab-admins" class="hide">
+    <div class="split">
+      <div class="panel glass">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span style="font-size:22px">🛡️</span>
+          <h3 style="margin:0" data-i18n="ad.admin_h">Create New Administrator</h3>
+        </div>
+        <p class="note" style="margin:0 0 16px" data-i18n="ad.admin_desc">Grant administrative privileges to another trusted community creator or moderator.</p>
+        <div class="form">
+          <div>
+            <label for="admNewName" data-i18n="ad.admin_name">Admin Full Name</label>
+            <input id="admNewName" maxlength="60" placeholder="e.g. Dinesh Kovai">
+          </div>
+          <div>
+            <label for="admNewEmail" data-i18n="ad.admin_email">Admin Email Address</label>
+            <input id="admNewEmail" type="email" maxlength="100" placeholder="admin@tamilmc.org">
+          </div>
+          <div>
+            <label for="admNewRole" data-i18n="ad.admin_role">Administrative Role</label>
+            <select id="admNewRole">
+              <option value="super_admin">Super Administrator (Full System Control)</option>
+              <option value="moderator">Community Moderator (Profiles & Votes)</option>
+              <option value="cert_manager">Certificate Officer (Certificates & Redeem)</option>
+            </select>
+          </div>
+          <div>
+            <label for="admNewNotes" data-i18n="ad.admin_notes">Notes / Responsibility (optional)</label>
+            <input id="admNewNotes" maxlength="120" placeholder="e.g. Lead Tamil SMP Coordinator">
+          </div>
+          <div id="admOutMsg" class="msg hide" role="status"></div>
+          <button class="btn primary" id="admCreateBtn" data-i18n="ad.admin_btn">Grant Administrator Access</button>
+        </div>
+      </div>
+
+      <div class="panel glass">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span style="font-size:22px">👥</span>
+          <h3 style="margin:0" data-i18n="ad.admin_list_h">Active Administrators</h3>
+        </div>
+        <p class="note" style="margin:0 0 16px" data-i18n="ad.admin_list_desc">Authorized community members with administrator clearance.</p>
+        <div class="tbl">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="ad.th.admin_name">Name</th>
+                <th data-i18n="ad.th.admin_email">Email</th>
+                <th data-i18n="ad.th.admin_role">Role</th>
+                <th data-i18n="ad.th.admin_date">Added</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="admTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 6: SERVER ICON & SETTINGS -->
   <div id="tab-settings" class="panel glass hide">
     <h3 style="margin-bottom:8px" data-i18n="ad.server_icon_h">Replace Server / Website Icon</h3>
     <p class="note" style="margin:0 0 20px" data-i18n="ad.server_icon_p">Upload or set an image/SVG for the TMC Awards logo across the site.</p>
@@ -209,7 +269,7 @@
     <div class="form" style="max-width:540px">
       <div style="display:flex;align-items:center;gap:18px">
         <div id="serverIconSlotAdmin" style="width:54px;height:54px;border-radius:14px;background:var(--surface-inset);display:grid;place-items:center;box-shadow:var(--neu-inset-sm);overflow:hidden">
-          <svg viewBox="0 0 8 8" style="width:36px;height:36px"><rect width="8" height="8" rx="1.2" fill="#1f7a45"/><g fill="#3dffa0"><rect x="1" y="1" width="2" height="2"/><rect x="5" y="1" width="2" height="2"/><rect x="3" y="3" width="2" height="2"/><rect x="1" y="5" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/></g></svg>
+          <img src="/logo.png" style="width:100%;height:100%;object-fit:cover;border-radius:12px" alt="TMC Logo">
         </div>
         <div style="flex:1">
           <label for="adIconFile">Upload Icon (PNG / SVG / JPG)</label>

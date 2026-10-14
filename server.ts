@@ -53,8 +53,12 @@ const NOT_FOUND_PAGE = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// Admin route: serve admin dashboard
-app.get(['/admin', '/admin/', '/admin.html'], (_req: Request, res: Response): void => {
+// Admin route guard: if user types /admin, /admin/, or /admin.html without ?token=ADMINOFTMC, respond with 404 error
+app.get(['/admin', '/admin/', '/admin.html'], (req: Request, res: Response): void => {
+  if (req.query.token !== 'ADMINOFTMC') {
+    res.status(404).send(notFoundHtml);
+    return;
+  }
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 

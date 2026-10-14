@@ -90,6 +90,17 @@ export interface UserAccount {
   name?: string;
 }
 
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'super_admin' | 'moderator' | 'cert_manager';
+  created_at: string;
+  created_by?: string;
+  notes?: string;
+  is_active: boolean;
+}
+
 export interface AuthSession {
   user: UserAccount;
   access_token: string;
@@ -123,6 +134,7 @@ export interface LegalPolicySection {
 
 export interface DatabaseState {
   users: UserAccount[];
+  admins?: AdminUser[];
   profiles: CreatorProfile[];
   certs: Certificate[];
   types: CertificateType[];

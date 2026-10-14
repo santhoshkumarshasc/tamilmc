@@ -10,6 +10,7 @@ import {
   Certificate,
   CertificateType,
   UserAccount,
+  AdminUser,
   CertTheme
 } from './types.js';
 
@@ -18,6 +19,7 @@ let profiles: CreatorProfile[] = [];
 let certs: Certificate[] = [];
 let types: CertificateType[] = [];
 let users: UserAccount[] = [];
+let admins: AdminUser[] = [];
 let editingType: CertificateType | null = null;
 let editing: CreatorProfile | null = null;
 let currentCert: Certificate | null = null;
@@ -91,7 +93,7 @@ async function initAdminAuth(): Promise<void> {
   const params = new URLSearchParams(window.location.search);
   const tokenParam = params.get('token');
 
-  // Direct login button with token
+  // Direct login button with security key
   const tokenGoBtn = $('lTokenGo');
   if (tokenGoBtn) {
     tokenGoBtn.onclick = async () => {
@@ -99,17 +101,15 @@ async function initAdminAuth(): Promise<void> {
       if (input === 'ADMINOFTMC') {
         const { error } = await (window as any).sb.auth.signInWithPassword({ email: 'admin@tmcawards.org', password: input });
         if (!error) showStep('app');
-        else (window as any).setMsg($('lMsg'), 'Invalid admin token', 'err');
+        else (window as any).setMsg($('lMsg'), (window as any).t('ad.fail') || 'Authentication failed. Please check credentials.', 'err');
       } else {
-        (window as any).setMsg($('lMsg'), 'Secret token must be ADMINOFTMC', 'err');
+        (window as any).setMsg($('lMsg'), (window as any).t('ad.fail') || 'Invalid administrator security key. Please verify credentials.', 'err');
       }
     };
   }
 
-  // Pre-fill token from URL if valid
+  // Auto-login from authorized token URL
   if (tokenParam === 'ADMINOFTMC') {
-    const lToken = $('lToken') as HTMLInputElement;
-    if (lToken) lToken.value = 'ADMINOFTMC';
     const { error } = await (window as any).sb.auth.signInWithPassword({ email: 'admin@tmcawards.org', password: 'ADMINOFTMC' });
     if (!error) {
       showStep('app');
@@ -128,23 +128,26 @@ async function initAdminAuth(): Promise<void> {
 
 /* DATA LOADING */
 async function loadAll(): Promise<void> {
-  const [p, c, ty, u] = await Promise.all([
+  const [p, c, ty, u, adm] = await Promise.all([
     (window as any).sb.rpc('admin_list_profiles'),
     (window as any).sb.rpc('admin_list_certificates'),
     (window as any).sb.rpc('admin_list_types'),
-    (window as any).sb.rpc('admin_list_users')
+    (window as any).sb.rpc('admin_list_users'),
+    (window as any).sb.rpc('admin_list_admins')
   ]);
 
   profiles = p.data || [];
   certs = c.data || [];
   types = ty.data || [];
   users = u.data || [];
+  admins = (adm && adm.data) || [];
 
   updateDashboardStats();
   renderCertsTab();
   renderProfilesTab();
   renderUsersTab();
   renderTypesTab();
+  renderAdminsTab();
 }
 
 function updateDashboardStats(): void {
