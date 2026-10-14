@@ -1,8 +1,188 @@
 (function(){
 'use strict';
-const cfg=window.TMC_CONFIG;
-window.sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,
-  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+function createFallbackClient(){
+  const STORAGE_KEY='tmc_mock_db_v1';
+  const defaultTypes=[
+    {id:'type-1',name:'Achievement',name_ta:'சாதனை',heading:'Certificate of Achievement',heading_ta:'சாதனைச் சான்றிதழ்',award:'Outstanding Creator',award_ta:'சிறந்த படைப்பாளர்',theme:'emerald',icon:'star',message:'Honouring outstanding creativity in Tamil Minecraft builds and videos.',is_active:true,sort_order:0},
+    {id:'type-2',name:'Winner',name_ta:'வெற்றியாளர்',heading:'Certificate of Victory',heading_ta:'வெற்றிச் சான்றிதழ்',award:'Showcase Winner',award_ta:'காட்சியக வெற்றியாளர்',theme:'gold',icon:'trophy',message:'First prize in the Tamil Minecraft Builders Showcase tournament.',is_active:true,sort_order:1},
+    {id:'type-3',name:'Participation',name_ta:'பங்கேற்பு',heading:'Certificate of Participation',heading_ta:'பங்கேற்புச் சான்றிதழ்',award:'Active Participant',award_ta:'சிறந்த பங்கேற்பாளர்',theme:'diamond',icon:'shield',message:'For active participation in the Tamil Minecraft Community Event.',is_active:true,sort_order:2},
+    {id:'type-4',name:'Appreciation',name_ta:'பாராட்டு',heading:'Certificate of Appreciation',heading_ta:'பாராட்டுச் சான்றிதழ்',award:'Valued Contributor',award_ta:'மதிப்புமிக்க பங்களிப்பாளர்',theme:'netherite',icon:'heart',message:'In recognition of outstanding dedication and leadership.',is_active:true,sort_order:3},
+    {id:'type-5',name:'Rising Star',name_ta:'வளரும் நட்சத்திரம்',heading:'Rising Star Certificate',heading_ta:'வளரும் நட்சத்திரச் சான்றிதழ்',award:'Rising Star',award_ta:'வளரும் நட்சத்திரம்',theme:'emerald',icon:'gem',message:'Recognising one of the most promising new Tamil creators.',is_active:true,sort_order:4}
+  ];
+  const defaultProfiles=[
+    {id:'mock-u1',handle:'tamil_miner',display_name:'Karthik',channel_name:'Tamil Miner',channel_url:'https://youtube.com/@tamilminer',bio:'Minecraft survival, redstone guides and hardcore speedruns in Tamil!',accent:'#1f9d5e',card_style:'raised',avatar_emoji:'⛏️',links:[{label:'YouTube',url:'https://youtube.com/@tamilminer'}],is_public:true,is_hidden:false,likes:42,cert_count:1},
+    {id:'mock-u2',handle:'block_thambi',display_name:'Santhosh',channel_name:'Block Thambi',channel_url:'https://youtube.com/@blockthambi',bio:'Building ancient Chola temples, Tanjore fortresses and mega structures in Minecraft.',accent:'#38d6ff',card_style:'outline',avatar_emoji:'🏰',links:[{label:'YouTube',url:'https://youtube.com/@blockthambi'}],is_public:true,is_hidden:false,likes:38,cert_count:1},
+    {id:'mock-u3',handle:'redstone_raja',display_name:'Vijay',channel_name:'Redstone Raja',channel_url:'https://youtube.com/@redstoneraja',bio:'Automated farms and crazy redstone contraptions with Tamil voiceover.',accent:'#f97316',card_style:'flat',avatar_emoji:'⚙️',links:[{label:'YouTube',url:'https://youtube.com/@redstoneraja'}],is_public:true,is_hidden:false,likes:29,cert_count:0}
+  ];
+  const defaultCerts=[
+    {id:'cert-1',cert_code:'CERT-TNBLOCKS1',token:'TMC-ALREADY-USED-1',recipient_name:'Karthik',channel_name:'Tamil Miner',award:'Outstanding Creator',award_ta:'சிறந்த படைப்பாளர்',heading:'Certificate of Achievement',heading_ta:'சாதனைச் சான்றிதழ்',theme:'emerald',icon:'star',content_title:'Hardcore 100 Days Tamil',content_url:'https://youtube.com/@tamilminer',message:'Outstanding milestone reaching 100 days in hardcore survival mode.',status:'redeemed',user_id:'mock-u1',issued_at:new Date('2025-01-15').toISOString()},
+    {id:'cert-2',cert_code:'CERT-TNBLOCKS2',token:'TMC-TNBL-OCKS-2025',recipient_name:'Santhosh',channel_name:'Block Thambi',award:'Showcase Winner',award_ta:'காட்சியக வெற்றியாளர்',heading:'Certificate of Victory',heading_ta:'வெற்றிச் சான்றிதழ்',theme:'gold',icon:'trophy',content_title:'Thanjavur Periya Kovil Build',content_url:'https://youtube.com/@blockthambi',message:'1st prize winner of the TN Blocks mega builder competition.',status:'unused',user_id:null,issued_at:new Date('2025-02-01').toISOString()}
+  ];
+  function loadDb(){
+    try{
+      const raw=localStorage.getItem(STORAGE_KEY);
+      if(raw)return JSON.parse(raw);
+    }catch(e){}
+    const init={users:[{id:'mock-u1',email:'karthik@example.com'}],profiles:defaultProfiles,certs:defaultCerts,types:defaultTypes,likes:{'mock-u1':['mock-u2']},session:null};
+    saveDb(init);
+    return init;
+  }
+  function saveDb(data){
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}catch(e){}
+  }
+  let db=loadDb();
+  let authListeners=[];
+  function notifyAuth(event,session){
+    authListeners.forEach(cb=>{try{cb(event,session)}catch(e){console.error(e)}});
+  }
+  return {
+    from:(table)=>({
+      select:(cols)=>{
+        db=loadDb();
+        const rows=table==='public_profiles'?db.profiles.filter(p=>p.is_public&&!p.is_hidden):[...db.profiles];
+        return {
+          order:(col,opts)=>({
+            limit:async(n)=>{
+              const sorted=[...rows].sort((a,b)=>opts&&opts.ascending?(a[col]-b[col]):(b[col]-a[col]));
+              return {data:sorted.slice(0,n),error:null};
+            }
+          }),
+          eq:(col,val)=>({
+            maybeSingle:async()=>{
+              db=loadDb();
+              const found=db.profiles.find(p=>String(p[col])===String(val));
+              return {data:found||null,error:null};
+            }
+          })
+        };
+      },
+      insert:async(record)=>{
+        db=loadDb();
+        const existing=db.profiles.find(p=>p.handle===record.handle&&p.id!==record.id);
+        if(existing)return {data:null,error:{code:'23505',message:'Handle already taken'}};
+        const idx=db.profiles.findIndex(p=>p.id===record.id);
+        if(idx>=0)db.profiles[idx]={...db.profiles[idx],...record};
+        else db.profiles.push({likes:0,cert_count:0,...record});
+        saveDb(db);
+        return {data:record,error:null};
+      },
+      update:(data)=>({
+        eq:async(col,val)=>{
+          db=loadDb();
+          const idx=db.profiles.findIndex(p=>String(p[col])===String(val));
+          if(idx>=0){db.profiles[idx]={...db.profiles[idx],...data};saveDb(db);return {data:db.profiles[idx],error:null}}
+          return {data:null,error:null};
+        }
+      })
+    }),
+    rpc:async(fn,params)=>{
+      db=loadDb();
+      if(fn==='toggle_like'){
+        const id=params.p_profile,uid=db.session?db.session.user.id:'guest';
+        if(!db.likes[uid])db.likes[uid]=[];
+        const idx=db.likes[uid].indexOf(id);
+        const p=db.profiles.find(x=>x.id===id);
+        let liked=false;
+        if(idx>=0){db.likes[uid].splice(idx,1);if(p)p.likes=Math.max(0,(p.likes||1)-1)}
+        else{db.likes[uid].push(id);if(p)p.likes=(p.likes||0)+1;liked=true}
+        saveDb(db);
+        return {data:{likes:p?p.likes:0,liked},error:null};
+      }
+      if(fn==='my_likes'){
+        const uid=db.session?db.session.user.id:null;
+        return {data:uid?(db.likes[uid]||[]):[],error:null};
+      }
+      if(fn==='my_certificates'){
+        const uid=db.session?db.session.user.id:null;
+        return {data:uid?db.certs.filter(c=>c.user_id===uid):[],error:null};
+      }
+      if(fn==='redeem_certificate'){
+        if(!db.session)return {data:{ok:false,error:'sign_in_required'},error:null};
+        const tk=(params.p_token||'').trim();
+        const found=db.certs.find(c=>c.token===tk&&c.status==='unused');
+        if(!found)return {data:{ok:false,error:'invalid_token'},error:null};
+        const myProf=db.profiles.find(p=>p.id===db.session.user.id);
+        found.status='redeemed';found.user_id=db.session.user.id;
+        if(myProf){found.recipient_name=myProf.display_name;found.channel_name=myProf.channel_name;myProf.cert_count=(myProf.cert_count||0)+1}
+        saveDb(db);
+        return {data:{ok:true,cert_code:found.cert_code},error:null};
+      }
+      if(fn==='verify_certificate'){
+        const code=(params.p_code||'').trim().toUpperCase();
+        return {data:db.certs.filter(c=>(c.cert_code||'').toUpperCase()===code),error:null};
+      }
+      if(fn==='delete_my_account'){
+        if(db.session){const uid=db.session.user.id;db.profiles=db.profiles.filter(p=>p.id!==uid);db.session=null;saveDb(db);notifyAuth('SIGNED_OUT',null)}
+        return {data:null,error:null};
+      }
+      if(fn==='admin_gate'||fn==='is_admin'||fn==='admin_list_profiles'||fn==='admin_list_certificates'||fn==='admin_list_types'){
+        if(fn==='admin_gate'||fn==='is_admin')return {data:true,error:null};
+        if(fn==='admin_list_profiles')return {data:db.profiles,error:null};
+        if(fn==='admin_list_certificates')return {data:db.certs,error:null};
+        if(fn==='admin_list_types')return {data:db.types,error:null};
+      }
+      if(fn==='admin_create_certificate'){
+        const rnd=()=>Math.random().toString(36).substring(2,6).toUpperCase();
+        const token=`TMC-${rnd()}-${rnd()}-${rnd()}`,code=`CERT-${rnd()}${rnd()}`;
+        const ty=db.types.find(t=>t.id===params.p_type_id);
+        const newCert={id:'cert-'+Date.now(),cert_code:code,token,recipient_name:params.p_recipient,channel_name:params.p_channel,award:params.p_award,award_ta:params.p_award_ta||'',content_title:params.p_content_title||'',content_url:params.p_content_url||'',message:params.p_message||'',theme:params.p_theme||'emerald',icon:ty?ty.icon:'star',status:'unused',user_id:null,issued_at:new Date().toISOString()};
+        db.certs.unshift(newCert);saveDb(db);
+        return {data:{token,cert_code:code},error:null};
+      }
+      if(fn==='admin_delete_certificate'){db.certs=db.certs.filter(c=>c.id!==params.p_id);saveDb(db);return {data:null,error:null}}
+      if(fn==='admin_reissue_certificate'||fn==='admin_reissue_token'){
+        const rnd=()=>Math.random().toString(36).substring(2,6).toUpperCase();
+        const token=`TMC-${rnd()}-${rnd()}-${rnd()}`,cert=db.certs.find(c=>c.id===params.p_id);
+        if(cert){cert.token=token;cert.status='unused'}saveDb(db);
+        return {data:{token},error:null};
+      }
+      if(fn==='admin_revoke_certificate'||fn==='admin_set_certificate_status'){
+        const cert=db.certs.find(c=>c.id===params.p_id);if(cert)cert.status='revoked';saveDb(db);return {data:null,error:null};
+      }
+      if(fn==='admin_toggle_hide'){
+        const p=db.profiles.find(x=>x.id===params.p_id);if(p)p.is_hidden=!p.is_hidden;saveDb(db);return {data:null,error:null};
+      }
+      if(fn==='admin_save_type'){
+        const ty={id:params.p_id||('type-'+Date.now()),name:params.p_name,name_ta:params.p_name_ta,heading:params.p_heading,heading_ta:params.p_heading_ta,award:params.p_award,award_ta:params.p_award_ta,theme:params.p_theme,icon:params.p_icon,message:params.p_message,is_active:params.p_active!==false,sort_order:params.p_sort||0};
+        const idx=db.types.findIndex(t=>t.id===ty.id);if(idx>=0)db.types[idx]=ty;else db.types.push(ty);saveDb(db);return {data:null,error:null};
+      }
+      if(fn==='admin_delete_type'){db.types=db.types.filter(t=>t.id!==params.p_id);saveDb(db);return {data:null,error:null}}
+      return {data:null,error:null};
+    },
+    auth:{
+      getSession:async()=>{db=loadDb();return {data:{session:db.session},error:null}},
+      onAuthStateChange:(callback)=>{
+        authListeners.push(callback);db=loadDb();
+        setTimeout(()=>callback(db.session?'SIGNED_IN':'SIGNED_OUT',db.session),0);
+        return {data:{subscription:{unsubscribe:()=>{authListeners=authListeners.filter(x=>x!==callback)}}}};
+      },
+      signUp:async({email})=>{
+        db=loadDb();const user={id:'u-'+Date.now(),email},session={user,access_token:'mock-token'};
+        db.users.push(user);db.session=session;saveDb(db);notifyAuth('SIGNED_IN',session);
+        return {data:{user,session},error:null};
+      },
+      signInWithPassword:async({email})=>{
+        db=loadDb();let user=db.users.find(u=>u.email===email);
+        if(!user){user={id:'u-'+Date.now(),email};db.users.push(user)}
+        const session={user,access_token:'mock-token'};db.session=session;saveDb(db);notifyAuth('SIGNED_IN',session);
+        return {data:{user,session},error:null};
+      },
+      signOut:async()=>{
+        db=loadDb();db.session=null;saveDb(db);notifyAuth('SIGNED_OUT',null);return {data:null,error:null};
+      },
+      resetPasswordForEmail:async()=>({data:{},error:null}),
+      mfa:{
+        getAuthenticatorAssuranceLevel:async()=>({data:{currentLevel:'aal2'}}),
+        listFactors:async()=>({data:{totp:[{id:'mock-factor'}]}}),
+        enroll:async()=>({data:{id:'mock-factor',totp:{qr_code:'',secret:'TNBLOCKSADMINKEY'}}}),
+        challenge:async()=>({data:{id:'mock-challenge'}}),
+        verify:async()=>({data:{},error:null})
+      }
+    }
+  };
+}
+
+window.sb = createFallbackClient();
 window.$=id=>document.getElementById(id);
 window.esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 window.safeUrl=u=>/^https:\/\/[^\s"'<>]{3,200}$/i.test(u||'')?u:'';

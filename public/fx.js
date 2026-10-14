@@ -4,12 +4,13 @@ const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fx={};
 /* ---- floating pixel background ---- */
 function bg(){
-  const c=document.createElement('canvas');c.id='fxBg';c.setAttribute('aria-hidden','true');document.body.prepend(c);
-  const a=document.createElement('div');a.className='aurora';a.setAttribute('aria-hidden','true');a.innerHTML='<i></i><i></i><i></i>';document.body.prepend(a);
+  const c=document.createElement('canvas');c.id='fxBg';c.setAttribute('aria-hidden','true');
+  c.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:0.6';
+  document.body.prepend(c);
   const ctx=c.getContext('2d');let W,H,P=[];
-  const cols=['#3dffa0','#38d6ff','#ffd166','#8a7dff'];
-  function size(){W=c.width=innerWidth;H=c.height=innerHeight;P=Array.from({length:Math.min(46,Math.floor(W/24))},()=>mk(true))}
-  function mk(r){const s=4+Math.floor(Math.random()*3)*4;return{x:Math.random()*W,y:r?Math.random()*H:H+20,s,v:.15+Math.random()*.5,d:(Math.random()-.5)*.3,c:cols[Math.floor(Math.random()*cols.length)],a:.12+Math.random()*.3}}
+  const cols=['#1ea763','#34d399','#6ee7b7','#a7f3d0'];
+  function size(){W=c.width=innerWidth;H=c.height=innerHeight;P=Array.from({length:Math.min(36,Math.floor(W/32))},()=>mk(true))}
+  function mk(r){const s=4+Math.floor(Math.random()*2)*4;return{x:Math.random()*W,y:r?Math.random()*H:H+20,s,v:.12+Math.random()*.35,d:(Math.random()-.5)*.25,c:cols[Math.floor(Math.random()*cols.length)],a:.06+Math.random()*.12}}
   function draw(){
     ctx.clearRect(0,0,W,H);
     for(const p of P){ctx.globalAlpha=p.a;ctx.fillStyle=p.c;ctx.fillRect(Math.round(p.x),Math.round(p.y),p.s,p.s);
