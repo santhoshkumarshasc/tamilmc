@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == 'santhoshkumarshasc@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isValidProfile(data) {
+      return data.keys().hasAll(['handle', 'display_name', 'channel_name', 'owner_id']) &&
+        data.handle is string && data.handle.size() >= 3 && data.handle.size() <= 30 &&
+        data.display_name is string && data.display_name.size() >= 2 && data.display_name.size() <= 50 &&
+        data.channel_name is string && data.channel_name.size() >= 2 && data.channel_name.size() <= 60 &&
+        data.owner_id is string && data.owner_id.size() <= 128;
+    }
+
+    function isValidCert(data) {
+      return data.keys().hasAll(['cert_code', 'recipient_name', 'award', 'status']) &&
+        data.cert_code is string && data.cert_code.size() <= 60 &&
+        data.recipient_name is string && data.recipient_name.size() <= 60 &&
+        data.award is string && data.award.size() <= 100 &&
+        data.status in ['unused', 'redeemed', 'revoked'];
+    }
+
+    // Profiles Collection
+    match /profiles/{profileId} {
+      allow read: if true;
+      allow create: if isSignedIn() &&
+        isValidId(profileId) &&
+        isValidProfile(incoming()) &&
+        incoming().owner_id == request.auth.uid;
+      allow update: if isSignedIn() &&
+        isValidId(profileId) &&
+        isValidProfile(incoming()) && (
+          (existing().owner_id == request.auth.uid &&
+           incoming().owner_id == existing().owner_id &&
+           incoming().diff(existing()).affectedKeys().hasOnly(['display_name', 'channel_name', 'channel_url', 'bio', 'accent', 'card_style', 'avatar_image', 'avatar_url', 'socials', 'custom_links', 'is_public', 'updated_at'])) ||
+          isAdmin()
+        );
+      // ONLY ADMIN can delete profiles! Public users can only edit.
+      allow delete: if isAdmin();
+    }
+
+    // Certificates Collection
+    match /certificates/{certId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(certId) && isValidCert(incoming());
+      allow update: if (isAdmin() && isValidCert(incoming())) || (
+        isSignedIn() &&
+        existing().status == 'unused' &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'user_id', 'recipient_name', 'channel_name']) &&
+        incoming().user_id == request.auth.uid &&
+        incoming().status == 'redeemed'
+      );
+      // ONLY ADMIN can delete certificates!
+      allow delete: if isAdmin();
+    }
+
+    // Votes Collection
+    match /votes/{voteId} {
+      allow read: if true;
+      allow create, update: if isValidId(voteId) &&
+        incoming().keys().hasAll(['voter_id', 'creator_id']) &&
+        incoming().voter_id is string && incoming().voter_id.size() <= 128 &&
+        incoming().creator_id is string && incoming().creator_id.size() <= 128;
+      allow delete: if isAdmin();
+    }
+
+    // Admins Collection
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+  }
+}

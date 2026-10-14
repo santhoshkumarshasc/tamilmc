@@ -1955,9 +1955,554 @@ dialog.dlg-wide {
   pointer-events: none;
 }
 
+/* ==========================================================
+   TMC AWARDS PRELOADER: TROPHY & "TWT - Tamil Minecraft Community"
+   ========================================================== */
+.preload-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  user-select: none;
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.preload-overlay.preload-fade-out {
+  opacity: 0;
+  transform: scale(1.03);
+  pointer-events: none;
+}
+
+.preload-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 38%, rgba(30, 167, 99, 0.12) 0%, rgba(245, 158, 11, 0.08) 45%, transparent 75%);
+  pointer-events: none;
+}
+
+[data-theme="dark"] .preload-backdrop {
+  background: radial-gradient(circle at 50% 38%, rgba(34, 197, 94, 0.18) 0%, rgba(245, 158, 11, 0.12) 50%, transparent 80%);
+}
+
+.preload-motes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.pm-spark {
+  position: absolute;
+  font-size: 14px;
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 0 0 18px rgba(34, 197, 94, 0.6);
+  animation: pmSparkFloat 4s ease-in-out infinite;
+}
+
+.pm-spark.s1 { left: 20%; top: 25%; animation-delay: 0s; font-size: 16px; }
+.pm-spark.s2 { left: 78%; top: 32%; animation-delay: 1.2s; font-size: 12px; color: #34d399; }
+.pm-spark.s3 { left: 28%; top: 68%; animation-delay: 2s; font-size: 18px; }
+.pm-spark.s4 { left: 72%; top: 70%; animation-delay: 0.6s; font-size: 14px; }
+.pm-spark.s5 { left: 48%; top: 18%; animation-delay: 1.8s; font-size: 12px; color: #34d399; }
+.pm-spark.s6 { left: 15%; top: 50%; animation-delay: 2.8s; font-size: 15px; }
+
+@keyframes pmSparkFloat {
+  0% { transform: translateY(12px) scale(0.7); opacity: 0.2; }
+  50% { transform: translateY(-10px) scale(1.15); opacity: 0.95; }
+  100% { transform: translateY(-24px) scale(0.6); opacity: 0.2; }
+}
+
+.preload-skip-btn {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 20px);
+  right: 24px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: var(--neu-shadow-xs);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.preload-skip-btn:hover {
+  color: var(--text);
+  box-shadow: var(--neu-shadow-sm);
+  transform: translateY(-1px);
+}
+
+.preload-skip-btn:active {
+  box-shadow: var(--neu-inset-sm);
+  transform: translateY(1px);
+}
+
+.preload-content {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 600px;
+  width: calc(100% - 40px);
+  padding: 20px;
+}
+
+/* 3D Trophy Stage in Preloader */
+.preload-cup-stage {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 900px;
+  margin-bottom: 24px;
+}
+
+.preload-spotlight {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 260px;
+  pointer-events: none;
+  background: linear-gradient(180deg, 
+    rgba(255, 248, 180, 0.45) 0%, 
+    rgba(255, 215, 0, 0.22) 40%, 
+    rgba(30, 167, 99, 0.1) 75%, 
+    transparent 100%
+  );
+  clip-path: polygon(42% 0%, 58% 0%, 100% 100%, 0% 100%);
+  filter: blur(4px);
+  animation: preloadSpotlight 3.5s ease-in-out infinite alternate;
+}
+
+@keyframes preloadSpotlight {
+  0% { opacity: 0.75; transform: translateX(-50%) scaleX(0.94); }
+  100% { opacity: 1; transform: translateX(-50%) scaleX(1.08); }
+}
+
+.preload-cup-aura {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 140px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.6) 0%, rgba(30, 167, 99, 0.3) 50%, transparent 75%);
+  filter: blur(8px);
+  animation: preloadAura 3s ease-in-out infinite alternate;
+}
+
+@keyframes preloadAura {
+  0% { transform: translateX(-50%) scale(0.9); opacity: 0.65; }
+  100% { transform: translateX(-50%) scale(1.2); opacity: 1; }
+}
+
+/* Energy Ripple Rings radiating from under the trophy */
+.trophy-energy-ring {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 215, 0, 0.45);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.35);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.trophy-energy-ring.r1 {
+  width: 90px;
+  height: 28px;
+  animation: energyRingPulse 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.trophy-energy-ring.r2 {
+  width: 90px;
+  height: 28px;
+  animation: energyRingPulse 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite 1.2s;
+}
+
+@keyframes energyRingPulse {
+  0% {
+    transform: translateX(-50%) scale(0.6);
+    opacity: 0.95;
+    border-color: rgba(255, 215, 0, 0.8);
+  }
+  100% {
+    transform: translateX(-50%) scale(2.2);
+    opacity: 0;
+    border-color: rgba(34, 197, 94, 0.1);
+  }
+}
+
+/* Orbiting Sparkling Stars around the Trophy */
+.trophy-orbit-spark {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  margin-top: -10px;
+  margin-left: -10px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #ffd700;
+  text-shadow: 0 0 8px #ffea00, 0 0 14px #34d399;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.trophy-orbit-spark.os1 {
+  animation: orbitTrack1 3.2s linear infinite;
+  color: #fbbf24;
+}
+
+.trophy-orbit-spark.os2 {
+  animation: orbitTrack2 3.8s linear infinite;
+  font-size: 16px;
+  color: #34d399;
+}
+
+.trophy-orbit-spark.os3 {
+  animation: orbitTrack3 2.8s linear infinite;
+  font-size: 12px;
+  color: #fde047;
+}
+
+@keyframes orbitTrack1 {
+  0% { transform: rotate(0deg) translateX(72px) rotate(0deg) scale(0.85); }
+  50% { transform: rotate(180deg) translateX(72px) rotate(-180deg) scale(1.2); }
+  100% { transform: rotate(360deg) translateX(72px) rotate(-360deg) scale(0.85); }
+}
+
+@keyframes orbitTrack2 {
+  0% { transform: rotate(120deg) translateX(85px) rotate(-120deg) scale(1.1); }
+  50% { transform: rotate(300deg) translateX(85px) rotate(-300deg) scale(0.7); }
+  100% { transform: rotate(480deg) translateX(85px) rotate(-480deg) scale(1.1); }
+}
+
+@keyframes orbitTrack3 {
+  0% { transform: rotate(240deg) translateX(65px) rotate(-240deg) scale(0.75); }
+  50% { transform: rotate(420deg) translateX(65px) rotate(-420deg) scale(1.25); }
+  100% { transform: rotate(600deg) translateX(65px) rotate(-600deg) scale(0.75); }
+}
+
+.preload-cup-wrap {
+  position: relative;
+  width: 130px;
+  height: 180px;
+  transform-style: preserve-3d;
+}
+
+.preload-cup-wrap.trophy-moving-active {
+  animation: trophyActiveLevitate 2.8s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+
+@keyframes trophyActiveLevitate {
+  0% {
+    transform: translateY(6px) scale(0.97) rotateZ(-1deg);
+  }
+  50% {
+    transform: translateY(-16px) scale(1.03) rotateZ(1.5deg);
+  }
+  100% {
+    transform: translateY(-24px) scale(1.05) rotateZ(-0.5deg);
+  }
+}
+
+.mc-cup-preload {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  width: 100px;
+  height: 150px;
+  margin-left: -50px;
+  transform-style: preserve-3d;
+  animation: preloadCupSpin 7s linear infinite;
+}
+
+@keyframes preloadCupSpin {
+  from { transform: rotateX(-10deg) rotateY(0deg); }
+  to { transform: rotateX(-10deg) rotateY(360deg); }
+}
+
+.cup-spark-preload {
+  position: absolute;
+  color: #ffd700;
+  font-size: 16px;
+  text-shadow: 0 0 10px #ffea00, 0 0 18px #3dffa0;
+  animation: preloadSpark 2.4s ease-in-out infinite;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.cup-spark-preload.cs1 { top: -6px; right: -4px; animation-delay: 0s; }
+.cup-spark-preload.cs2 { bottom: 30px; left: -10px; animation-delay: 1.2s; font-size: 13px; color: #34d399; }
+
+@keyframes preloadSpark {
+  0%, 100% { transform: scale(0.8) rotate(0deg); opacity: 0.4; }
+  50% { transform: scale(1.25) rotate(20deg); opacity: 1; }
+}
+
+/* 3D Preload Cup Blocks */
+.pcup-bowl-main, .pcup-bowl-low, .pcup-stem, .pcup-base2, .pcup-base1 {
+  position: absolute;
+  transform-style: preserve-3d;
+}
+
+.pcup-face {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.pcup-gold {
+  border: 2px solid #b8860b;
+  background:
+    linear-gradient(rgba(255,255,255,0.45) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(255,255,255,0.45) 2px, transparent 2px),
+    linear-gradient(135deg, #ffd700 0%, #f59e0b 50%, #b45309 100%);
+  background-size: 10px 10px, 10px 10px, 100% 100%;
+  box-shadow: inset 0 0 6px rgba(255, 235, 59, 0.4);
+}
+
+.pcup-stem-gold {
+  border: 1.5px solid #b8860b;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 60%, #92400e 100%);
+}
+
+.pcup-base-gold {
+  border: 2px solid #b8860b;
+  background: linear-gradient(135deg, #fbbf24 0%, #d97706 70%, #78350f 100%);
+}
+
+.pcup-dark-gold {
+  border: 2px solid #1c1917;
+  background:
+    linear-gradient(rgba(255,255,255,0.1) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(255,255,255,0.1) 2px, transparent 2px),
+    linear-gradient(135deg, #374151 0%, #1f2937 60%, #111827 100%);
+  background-size: 10px 10px, 10px 10px, 100% 100%;
+}
+
+.pcup-base1 { width: 60px; height: 14px; left: 20px; top: 122px; }
+.pcup-base1 .pf-front { width: 60px; height: 14px; transform: translateZ(30px); }
+.pcup-base1 .pf-back { width: 60px; height: 14px; transform: rotateY(180deg) translateZ(30px); }
+.pcup-base1 .pf-left { width: 60px; height: 14px; transform: rotateY(-90deg) translateZ(30px); }
+.pcup-base1 .pf-right { width: 60px; height: 14px; transform: rotateY(90deg) translateZ(30px); }
+.pcup-base1 .pf-top { width: 60px; height: 60px; transform: rotateX(90deg) translateZ(30px); }
+.pcup-base1 .pf-bottom { width: 60px; height: 60px; transform: rotateX(-90deg) translateZ(30px); }
+
+.pcup-base2 { width: 44px; height: 12px; left: 28px; top: 110px; }
+.pcup-base2 .pf-front { width: 44px; height: 12px; transform: translateZ(22px); }
+.pcup-base2 .pf-back { width: 44px; height: 12px; transform: rotateY(180deg) translateZ(22px); }
+.pcup-base2 .pf-left { width: 44px; height: 12px; transform: rotateY(-90deg) translateZ(22px); }
+.pcup-base2 .pf-right { width: 44px; height: 12px; transform: rotateY(90deg) translateZ(22px); }
+.pcup-base2 .pf-top { width: 44px; height: 44px; transform: rotateX(90deg) translateZ(22px); }
+
+.pcup-stem { width: 18px; height: 30px; left: 41px; top: 80px; }
+.pcup-stem .pf-front { width: 18px; height: 30px; transform: translateZ(9px); }
+.pcup-stem .pf-back { width: 18px; height: 30px; transform: rotateY(180deg) translateZ(9px); }
+.pcup-stem .pf-left { width: 18px; height: 30px; transform: rotateY(-90deg) translateZ(9px); }
+.pcup-stem .pf-right { width: 18px; height: 30px; transform: rotateY(90deg) translateZ(9px); }
+
+.pcup-bowl-low { width: 38px; height: 18px; left: 31px; top: 62px; }
+.pcup-bowl-low .pf-front { width: 38px; height: 18px; transform: translateZ(19px); }
+.pcup-bowl-low .pf-back { width: 38px; height: 18px; transform: rotateY(180deg) translateZ(19px); }
+.pcup-bowl-low .pf-left { width: 38px; height: 18px; transform: rotateY(-90deg) translateZ(19px); }
+.pcup-bowl-low .pf-right { width: 38px; height: 18px; transform: rotateY(90deg) translateZ(19px); }
+
+.pcup-bowl-main { width: 58px; height: 40px; left: 21px; top: 22px; }
+.pcup-bowl-main .pf-front { width: 58px; height: 40px; transform: translateZ(29px); }
+.pcup-bowl-main .pf-back { width: 58px; height: 40px; transform: rotateY(180deg) translateZ(29px); }
+.pcup-bowl-main .pf-left { width: 58px; height: 40px; transform: rotateY(-90deg) translateZ(29px); }
+.pcup-bowl-main .pf-right { width: 58px; height: 40px; transform: rotateY(90deg) translateZ(29px); }
+.pcup-bowl-main .pf-top {
+  width: 58px; height: 58px;
+  transform: rotateX(90deg) translateZ(29px);
+  background: radial-gradient(circle, #3dffa0 0%, #10b981 40%, #064e3b 80%, #ffd700 100%);
+  box-shadow: inset 0 0 8px #047857;
+}
+
+.pcup-jewel {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  background: linear-gradient(135deg, #a7f3d0 0%, #10b981 50%, #047857 100%);
+  border: 1.5px solid #064e3b;
+  box-shadow: 0 0 8px #34d399, inset 0 0 3px #ecfdf5;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
+.pcup-handle {
+  position: absolute;
+  top: 25px;
+  width: 24px;
+  height: 36px;
+  transform-style: preserve-3d;
+}
+.ph-left { left: -2px; }
+.ph-right { right: -2px; }
+
+.php-pixel {
+  position: absolute;
+  background: #f59e0b;
+  border: 1.5px solid #92400e;
+  box-shadow: inset 0 0 3px #fef08a;
+}
+.ph-left .p1 { width: 12px; height: 8px; left: 0; top: 0; }
+.ph-left .p2 { width: 8px; height: 18px; left: 0; top: 8px; }
+.ph-left .p3 { width: 12px; height: 8px; left: 0; bottom: 2px; }
+
+.ph-right .p1 { width: 12px; height: 8px; right: 0; top: 0; }
+.ph-right .p2 { width: 8px; height: 18px; right: 0; top: 8px; }
+.ph-right .p3 { width: 12px; height: 8px; right: 0; bottom: 2px; }
+
+/* Preload Typography & Exact Text */
+.preload-text-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 540px;
+}
+
+.preload-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--em);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--neu-shadow-xs);
+  padding: 5px 14px;
+  border-radius: 9999px;
+  margin-bottom: 14px;
+}
+
+.mc-cube-icon {
+  width: 10px;
+  height: 10px;
+  background: var(--em);
+  border-radius: 2px;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.4);
+}
+
+.preload-title {
+  font-size: clamp(22px, 4.4vw, 34px);
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0;
+  color: var(--text);
+  letter-spacing: -0.015em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.twt-glow {
+  color: var(--em);
+  text-shadow: 0 0 16px rgba(24, 152, 85, 0.45);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.twt-dash {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.twt-sub {
+  color: var(--text);
+}
+
+.preload-subtitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 8px 0 24px;
+}
+
+/* Moving Trophy Loading Label (Loading bar removed per design) */
+.trophy-loading-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 22px;
+  border-radius: 9999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--neu-shadow-xs);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  animation: loadingLabelPulse 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes loadingLabelPulse {
+  0% {
+    box-shadow: var(--neu-shadow-xs);
+    color: var(--muted);
+  }
+  100% {
+    box-shadow: var(--neu-shadow-sm);
+    color: var(--em);
+    border-color: rgba(30, 167, 99, 0.3);
+  }
+}
+
+.loading-spin-star {
+  display: inline-block;
+  color: #ffd700;
+  font-size: 14px;
+  animation: spinStar 3s linear infinite;
+  text-shadow: 0 0 6px #ffea00;
+}
+
+@keyframes spinStar {
+  from { transform: rotate(0deg) scale(0.9); }
+  50% { transform: rotate(180deg) scale(1.15); }
+  to { transform: rotate(360deg) scale(0.9); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .mc-cup, .mc-cup-wrap, .spotlight-cone, .pedestal-glow, dialog[open], .msg { animation: none !important; }
+  .mc-cup, .mc-cup-wrap, .mc-cup-preload, .preload-cup-wrap, .spotlight-cone, .preload-spotlight, .pedestal-glow, .preload-cup-aura, .trophy-energy-ring, .trophy-orbit-spark, dialog[open], .msg { animation: none !important; }
   .rv { opacity: 1; translate: none; transition: none; }
   .pcard { transform: none !important; }
 }

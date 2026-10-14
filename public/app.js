@@ -80,7 +80,7 @@ window.addEventListener('hashchange',()=>{
 function getPreferredTheme(){
   const saved=localStorage.getItem('tmc_theme');
   if(saved==='dark'||saved==='light') return saved;
-  return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+  return 'light';
 }
 function applyTheme(th){
   document.documentElement.setAttribute('data-theme', th);
@@ -774,12 +774,9 @@ $('pSave').onclick=async()=>{
     setTimeout(()=>{ openWelcomeCertModal(res&&res.welcomeCert); }, 400);
   }
 };
-$('pDelete').onclick=async()=>{
-  if(!confirm(t('m.del_confirm')))return;
-  const {error}=await sb.rpc('delete_my_account');
-  if(error)return setMsg($('pMsg'),t('m.del_err'),'err');
-  await sb.auth.signOut();setPage('showcase');await loadPublic();
-};
+if($('pDelete')){
+  $('pDelete').remove();
+}
 
 /* ---------- WELCOME CERTIFICATE POPUP MODAL ---------- */
 function openWelcomeCertModal(cert){

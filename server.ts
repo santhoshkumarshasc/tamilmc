@@ -53,14 +53,9 @@ const NOT_FOUND_PAGE = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// Admin security guard: Only open on /admin?token=ADMINOFTMC
-// If /admin or /admin.html is accessed without ?token=ADMINOFTMC, respond with 404 error
-app.get(['/admin', '/admin/', '/admin.html'], (req: Request, res: Response): void => {
-  if (req.query.token === 'ADMINOFTMC') {
-    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-  } else {
-    res.status(404).send(NOT_FOUND_PAGE);
-  }
+// Admin route: serve admin dashboard
+app.get(['/admin', '/admin/', '/admin.html'], (_req: Request, res: Response): void => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 // Serve static assets from public/ directory

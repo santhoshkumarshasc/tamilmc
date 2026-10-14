@@ -1,20 +1,15 @@
 /**
- * TMC Awards - Preload Animation with Minecraft Cup & Text
- * Renders an animated Minecraft Championship Trophy Cup with particle sparkles,
- * pulsating golden spotlight, and animated loading progress text.
+ * TMC Awards - Preload Animation with Moving Trophy & "TWT - Tamil Minecraft Community" Text
+ * Renders an animated Minecraft Championship Trophy Cup with moving levitation,
+ * rotating golden aura, orbital sparks, pulsating spotlight, and custom TWT branding.
  */
-
-import { PreloadState } from './types.js';
 
 export class TMCPreloader {
   private overlay: HTMLElement | null = null;
-  private progressBar: HTMLElement | null = null;
-  private progressPercent: HTMLElement | null = null;
   private statusText: HTMLElement | null = null;
   private isDismissed: boolean = false;
-  private animationFrameId: number | null = null;
-  private startTime: number = 0;
-  private duration: number = 1600; // 1.6s smooth cinematic entrance
+  private timeoutId: number | null = null;
+  private duration: number = 1900; // 1.9s cinematic entrance
 
   constructor() {
     this.init();
@@ -28,8 +23,6 @@ export class TMCPreloader {
       this.createOverlay();
     }
 
-    this.progressBar = document.getElementById('preloadBarFill');
-    this.progressPercent = document.getElementById('preloadPercent');
     this.statusText = document.getElementById('preloadStatusText');
 
     const skipBtn = document.getElementById('preloadSkipBtn');
@@ -44,16 +37,14 @@ export class TMCPreloader {
     const el = document.createElement('div');
     el.id = 'tmcPreloader';
     el.className = 'preload-overlay';
-    el.setAttribute('role', 'progressbar');
-    el.setAttribute('aria-valuemin', '0');
-    el.setAttribute('aria-valuemax', '100');
-    el.setAttribute('aria-valuenow', '0');
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-label', 'Loading TWT - Tamil Minecraft Community');
 
     el.innerHTML = `
       <div class="preload-backdrop"></div>
       
       <!-- Ambient Sparkle Motes -->
-      <div class="preload-motes">
+      <div class="preload-motes" aria-hidden="true">
         <span class="pm-spark s1">✦</span>
         <span class="pm-spark s2">★</span>
         <span class="pm-spark s3">✦</span>
@@ -64,16 +55,23 @@ export class TMCPreloader {
 
       <button type="button" class="preload-skip-btn" id="preloadSkipBtn" aria-label="Skip preload animation">
         <span>Skip</span>
-        <span style="font-size:11px">✕</span>
+        <span style="font-size:11px" aria-hidden="true">✕</span>
       </button>
 
       <div class="preload-content">
-        <!-- 3D Cup Stage with Spotlight -->
-        <div class="preload-cup-stage" aria-label="TMC Golden Championship Trophy Cup">
+        <!-- 3D Moving Trophy Stage with Orbiting Energy Rings & Sparks -->
+        <div class="preload-cup-stage" aria-label="TMC Golden Championship Trophy Cup Loading">
           <div class="preload-spotlight"></div>
           <div class="preload-cup-aura"></div>
+          <div class="trophy-energy-ring r1" aria-hidden="true"></div>
+          <div class="trophy-energy-ring r2" aria-hidden="true"></div>
           
-          <div class="preload-cup-wrap">
+          <!-- Orbiting Loading Sparks -->
+          <div class="trophy-orbit-spark os1" aria-hidden="true">✦</div>
+          <div class="trophy-orbit-spark os2" aria-hidden="true">★</div>
+          <div class="trophy-orbit-spark os3" aria-hidden="true">✦</div>
+          
+          <div class="preload-cup-wrap trophy-moving-active">
             <div class="mc-cup-preload">
               <div class="cup-spark-preload cs1">✦</div>
               <div class="cup-spark-preload cs2">✦</div>
@@ -81,7 +79,7 @@ export class TMCPreloader {
               <!-- Top Bowl -->
               <div class="pcup-bowl-main">
                 <div class="pcup-face pcup-gold pf-front">
-                  <div class="pcup-jewel"></div>
+                  <div class="pcup-jewel" title="Emerald Gem"></div>
                 </div>
                 <div class="pcup-face pcup-gold pf-back">
                   <div class="pcup-jewel"></div>
@@ -143,30 +141,28 @@ export class TMCPreloader {
           </div>
         </div>
 
-        <!-- Typography & Text Animation -->
+        <!-- Typography & Text Animation: TWT - Tamil Minecraft Community -->
         <div class="preload-text-box">
           <div class="preload-pill-badge">
             <span class="mc-cube-icon"></span>
-            <span>TAMIL MINECRAFT COMMUNITY</span>
+            <span>OFFICIAL CREATOR SHOWCASE</span>
           </div>
 
-          <h1 class="preload-title">
-            <span class="pt-glow">TMC</span> <span class="pt-white">AWARDS</span>
+          <h1 class="preload-title" id="preloadBrandHeader">
+            <span class="twt-glow">TWT</span>
+            <span class="twt-dash">-</span>
+            <span class="twt-sub">Tamil Minecraft Community</span>
           </h1>
 
           <p class="preload-subtitle">
-            தமிழ் மின்கிராஃப்ட் படைப்பாளர் விருதுகள்
+            தமிழ் மின்கிராஃப்ட் சமூகம் · TMC Awards
           </p>
 
-          <!-- Minecraft Pixel Progress Bar -->
-          <div class="preload-bar-container">
-            <div class="preload-bar-track">
-              <div class="preload-bar-fill" id="preloadBarFill" style="width: 0%"></div>
-            </div>
-            <div class="preload-bar-meta">
-              <span id="preloadStatusText" class="preload-status">Preparing Trophy Showcase...</span>
-              <span id="preloadPercent" class="preload-pct">0%</span>
-            </div>
+          <!-- Dynamic Trophy Moving Loading Status (No progress bar) -->
+          <div class="trophy-loading-label">
+            <span class="loading-spin-star">✦</span>
+            <span id="preloadStatusText">Loading Community Showcase...</span>
+            <span class="loading-spin-star">✦</span>
           </div>
         </div>
       </div>
@@ -177,63 +173,38 @@ export class TMCPreloader {
   }
 
   private startAnimation(): void {
-    this.startTime = performance.now();
     this.isDismissed = false;
 
     const phrases = [
-      { maxPct: 30, text: 'Crafting Trophy Showcase...', textTa: 'கோப்பை அரங்கம் உருவாகிறது...' },
-      { maxPct: 65, text: 'Loading Verified Creators...', textTa: 'படைப்பாளர்கள் அரங்கம் தயாராகிறது...' },
-      { maxPct: 90, text: 'Preparing Community Voting...', textTa: 'வாக்களிப்பு தயாராகிறது...' },
-      { maxPct: 100, text: 'Welcome to TMC Awards!', textTa: 'TMC விருதுகளுக்கு நல்வரவு!' }
+      { delay: 0, text: 'Forging Championship Trophy...', textTa: 'தங்கக் கோப்பை தயாராகிறது...' },
+      { delay: 600, text: 'Gathering Community Creators...', textTa: 'படைப்பாளர்கள் அரங்கம் உருவாகிறது...' },
+      { delay: 1200, text: 'Connecting Tamil Minecraft Community...', textTa: 'TWT சமூகம் இணைகிறது...' },
+      { delay: 1700, text: 'Welcome to TWT Showcase!', textTa: 'TWT அரங்கிற்கு நல்வரவு!' }
     ];
 
     const isTa = typeof window !== 'undefined' && 
       (window as any).lang && (window as any).lang() === 'ta';
 
-    const frame = (now: number) => {
-      if (this.isDismissed) return;
+    phrases.forEach(p => {
+      window.setTimeout(() => {
+        if (!this.isDismissed && this.statusText) {
+          this.statusText.textContent = isTa ? p.textTa : p.text;
+        }
+      }, p.delay);
+    });
 
-      const elapsed = now - this.startTime;
-      const progress = Math.min(1, elapsed / this.duration);
-      const easeProgress = this.easeOutCubic(progress);
-      const pct = Math.floor(easeProgress * 100);
-
-      if (this.progressBar) {
-        this.progressBar.style.width = `${pct}%`;
-      }
-      if (this.progressPercent) {
-        this.progressPercent.textContent = `${pct}%`;
-      }
-      if (this.overlay) {
-        this.overlay.setAttribute('aria-valuenow', String(pct));
-      }
-
-      if (this.statusText) {
-        const item = phrases.find(p => pct <= p.maxPct) || phrases[phrases.length - 1];
-        this.statusText.textContent = isTa ? item.textTa : item.text;
-      }
-
-      if (progress < 1) {
-        this.animationFrameId = requestAnimationFrame(frame);
-      } else {
-        setTimeout(() => this.dismiss(), 200);
-      }
-    };
-
-    this.animationFrameId = requestAnimationFrame(frame);
-  }
-
-  private easeOutCubic(t: number): number {
-    return 1 - Math.pow(1 - t, 3);
+    this.timeoutId = window.setTimeout(() => {
+      this.dismiss();
+    }, this.duration);
   }
 
   public dismiss(): void {
     if (this.isDismissed) return;
     this.isDismissed = true;
 
-    if (this.animationFrameId !== null) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
+    if (this.timeoutId !== null) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
     }
 
     if (this.overlay) {

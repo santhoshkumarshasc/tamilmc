@@ -15,8 +15,7 @@
   (function() {
     try {
       var saved = localStorage.getItem('tmc_theme');
-      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      var theme = saved || (prefersDark ? 'dark' : 'light');
+      var theme = saved || 'light';
       document.documentElement.setAttribute('data-theme', theme);
     } catch(e) {}
   })();
@@ -332,7 +331,6 @@
           <div id="pMsg" class="msg hide" role="status"></div>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
             <button class="btn primary" id="pSave" data-i18n="f.save">Save profile</button>
-            <button class="btn danger" id="pDelete" data-i18n="f.delete">Delete account</button>
           </div>
         </div></div>
         <div class="rv">
@@ -442,6 +440,7 @@
       <a href="#showcase" data-nav="showcase" data-i18n="nav.showcase">Showcase</a>
       <a href="#dashboard" class="hide" id="footNavDash" data-nav="dashboard" data-i18n="nav.profile">My profile</a>
       <a href="#redeem" data-nav="redeem" data-i18n="nav.redeem">Redeem</a>
+      <a href="/admin" class="footer-admin-link" style="opacity:0.75;font-size:13px;margin-top:4px;display:inline-block">🔒 Admin Panel</a>
     </div>
 
     <div class="footer-nav-col">
@@ -573,6 +572,7 @@
 
 <script src="i18n.js"></script>
 <script src="fx.js"></script>
+<script src="preload.js"></script>
 <script src="shared.js"></script>
 <script src="app.js"></script>
 </body>

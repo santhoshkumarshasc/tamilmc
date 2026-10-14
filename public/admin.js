@@ -324,27 +324,20 @@ if($('themeBtn')) $('themeBtn').onclick=()=>{
 (async()=>{
   const searchParams=new URLSearchParams(window.location.search);
   const tokenParam=searchParams.get('token');
-  if(tokenParam!=='ADMINOFTMC'){
-    document.title = '404 - Page Not Found';
-    document.body.innerHTML = `
-      <div style="font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f17;color:#f1f5f9;text-align:center;padding:24px">
-        <div style="max-width:480px;padding:48px 24px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.5)">
-          <div style="display:inline-block;padding:4px 12px;background:rgba(239,68,68,0.15);color:#f87171;border-radius:9999px;font-size:13px;font-weight:700;margin-bottom:16px;border:1px solid rgba(239,68,68,0.3)">404 ERROR</div>
-          <h1 style="font-size:76px;margin:0;color:#ef4444;font-weight:900;line-height:1">404</h1>
-          <h2 style="font-size:24px;margin:16px 0 10px;color:#f8fafc">Page Not Found</h2>
-          <p style="color:#94a3b8;font-size:15px;line-height:1.6;margin:0 0 28px">The requested page does not exist or access has been restricted. Please check the URL and try again.</p>
-          <a href="/" style="display:inline-block;padding:12px 26px;background:#1f9d5e;color:#fff;text-decoration:none;border-radius:12px;font-weight:700">Return to TMC Showcase</a>
-        </div>
-      </div>
-    `;
-    return;
+  if(tokenParam==='ADMINOFTMC'){
+    if($('lToken')) $('lToken').value = 'ADMINOFTMC';
+    const {data}=await sb.rpc('admin_login_token',{token:'ADMINOFTMC'});
+    if(data&&data.ok){
+      await enter();
+      return;
+    }
   }
 
-  const {data}=await sb.rpc('admin_login_token',{token:'ADMINOFTMC'});
-  if(data&&data.ok){
+  const {data:gate}=await sb.rpc('is_admin');
+  if(gate){
     await enter();
-    return;
+  } else {
+    view('stepLogin');
   }
-  view('stepLogin');
 })();
 })();

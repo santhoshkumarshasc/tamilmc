@@ -1,0 +1,81 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "Creator profile for Tamil Minecraft Creators",
+      "type": "object",
+      "properties": {
+        "handle": { "type": "string", "maxLength": 30 },
+        "display_name": { "type": "string", "maxLength": 50 },
+        "channel_name": { "type": "string", "maxLength": 60 },
+        "channel_url": { "type": "string", "maxLength": 250 },
+        "bio": { "type": "string", "maxLength": 500 },
+        "accent": { "type": "string", "maxLength": 10 },
+        "card_style": { "type": "string", "maxLength": 20 },
+        "avatar_image": { "type": "string", "maxLength": 500000 },
+        "avatar_url": { "type": "string", "maxLength": 500 },
+        "is_public": { "type": "boolean" },
+        "is_hidden": { "type": "boolean" },
+        "likes": { "type": "number" },
+        "votes": { "type": "number" },
+        "cert_count": { "type": "number" },
+        "has_welcome": { "type": "boolean" },
+        "owner_id": { "type": "string", "maxLength": 128 },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["handle", "display_name", "channel_name", "owner_id"]
+    },
+    "Certificate": {
+      "title": "Certificate",
+      "description": "Award and membership certificates",
+      "type": "object",
+      "properties": {
+        "cert_code": { "type": "string", "maxLength": 60 },
+        "token": { "type": "string", "maxLength": 60 },
+        "recipient_name": { "type": "string", "maxLength": 60 },
+        "channel_name": { "type": "string", "maxLength": 60 },
+        "award": { "type": "string", "maxLength": 100 },
+        "award_ta": { "type": "string", "maxLength": 100 },
+        "heading": { "type": "string", "maxLength": 100 },
+        "heading_ta": { "type": "string", "maxLength": 100 },
+        "content_title": { "type": "string", "maxLength": 200 },
+        "content_url": { "type": "string", "maxLength": 300 },
+        "message": { "type": "string", "maxLength": 500 },
+        "theme": { "type": "string", "maxLength": 30 },
+        "icon": { "type": "string", "maxLength": 30 },
+        "type_name": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["unused", "redeemed", "revoked"] },
+        "user_id": { "type": "string", "maxLength": 128 },
+        "is_welcome": { "type": "boolean" },
+        "issued_at": { "type": "string" }
+      },
+      "required": ["cert_code", "recipient_name", "award", "status"]
+    },
+    "Vote": {
+      "title": "Vote",
+      "description": "Community poll 1-person-1-vote entry",
+      "type": "object",
+      "properties": {
+        "voter_id": { "type": "string", "maxLength": 128 },
+        "creator_id": { "type": "string", "maxLength": 128 },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["voter_id", "creator_id"]
+    }
+  },
+  "firestore": {
+    "/profiles/{profileId}": {
+      "schema": "Profile",
+      "description": "Public and creator profiles"
+    },
+    "/certificates/{certId}": {
+      "schema": "Certificate",
+      "description": "Official community certificates"
+    },
+    "/votes/{voteId}": {
+      "schema": "Vote",
+      "description": "1 person 1 vote entries"
+    }
+  }
+}

@@ -609,8 +609,31 @@ export function createFallbackClient() {
         return { data: cert, error: null };
       }
 
-      // Admin Lists
-      const isAdmin = db.isAdmin || (db.session && db.session.user.is_admin);
+      // Admin Lists & Gate
+      const isAdmin = db.isAdmin || (db.session && db.session.user && (db.session.user.is_admin || db.session.user.email === 'admin@tmcawards.org'));
+      if (fn === 'admin_gate' || fn === 'is_admin') {
+        return { data: isAdmin, error: null };
+      }
+      if (fn === 'admin_login_token') {
+        const tk = (params.token || '').trim();
+        if (tk === 'ADMINOFTMC') {
+          const user: UserAccount = {
+            id: 'admin-tmc',
+            email: 'admin@tmcawards.org',
+            is_admin: true,
+            name: 'TMC Administrator',
+            created_at: new Date().toISOString()
+          };
+          const session: AuthSession = { user, access_token: 'admin-secret-token-tmc' };
+          db.isAdmin = true;
+          db.adminLoginAt = Date.now();
+          db.session = session;
+          saveDb(db);
+          notifyAuth('SIGNED_IN', session);
+          return { data: { ok: true, session }, error: null };
+        }
+        return { data: { ok: false, error: 'Invalid secret token' }, error: null };
+      }
       if (fn === 'admin_list_profiles') return { data: db.profiles, error: null };
       if (fn === 'admin_list_certificates') return { data: db.certs, error: null };
       if (fn === 'admin_list_types') return { data: db.types, error: null };
