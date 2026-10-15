@@ -10,7 +10,12 @@
     "noImplicitAny": false,
     "resolveJsonModule": true,
     "noEmit": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "allowImportingTsExtensions": true
   },
   "include": [
     "server.ts",

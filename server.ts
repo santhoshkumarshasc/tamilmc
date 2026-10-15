@@ -1,4 +1,5 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -28,7 +29,7 @@ import {
   SUPABASE_URL,
   getSupabaseAdmin,
   getSupabaseClient
-} from './src/supabase.js';
+} from './src/supabase.ts';
 
 // Health check endpoint
 app.get('/api/health', (_req: Request, res: Response): void => {
