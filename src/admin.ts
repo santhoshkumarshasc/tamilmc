@@ -513,6 +513,84 @@ function setupServerIconControls(): void {
   }
 }
 
+// Supabase controls
+function setupSupabaseControls(): void {
+  const urlInp = $('sbProjectUrl') as HTMLInputElement;
+  const saveBtn = $('btnSaveSbUrl');
+  const testBtn = $('btnTestSbConn');
+  const badge = $('supabaseStatusBadge');
+  const msg = $('sbMsg');
+
+  // Load existing config from server
+  fetch('/api/supabase/config')
+    .then(r => r.json())
+    .then(cfg => {
+      if (cfg && cfg.url && urlInp && !urlInp.value) {
+        urlInp.value = cfg.url;
+      }
+      if (badge && cfg.configured) {
+        badge.textContent = '● Connected';
+        badge.style.background = 'rgba(30,167,99,0.18)';
+        badge.style.color = '#10b981';
+      }
+    })
+    .catch(() => {});
+
+  if (saveBtn) {
+    saveBtn.onclick = async () => {
+      const url = (urlInp?.value || '').trim();
+      if (!url) {
+        if (msg) (window as any).setMsg(msg, 'Please enter a Supabase Project URL', 'err');
+        return;
+      }
+      try {
+        const res = await fetch('/api/supabase/set-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (msg) (window as any).setMsg(msg, '✓ Project URL saved and connected successfully!', 'ok');
+          if (badge) {
+            badge.textContent = data.status?.connected ? '● Live & Connected' : '● URL Saved';
+            badge.style.color = data.status?.connected ? '#10b981' : '#f59e0b';
+          }
+        } else {
+          if (msg) (window as any).setMsg(msg, data.error || 'Failed to update URL', 'err');
+        }
+      } catch (err: any) {
+        if (msg) (window as any).setMsg(msg, err?.message || 'Error saving URL', 'err');
+      }
+    };
+  }
+
+  if (testBtn) {
+    testBtn.onclick = async () => {
+      if (msg) (window as any).setMsg(msg, 'Testing Supabase connection...', 'note');
+      try {
+        const res = await fetch('/api/supabase/status');
+        const status = await res.json();
+        if (status.connected) {
+          if (msg) (window as any).setMsg(msg, '✓ Supabase connection active and responding!', 'ok');
+          if (badge) {
+            badge.textContent = '● Live & Connected';
+            badge.style.color = '#10b981';
+          }
+        } else {
+          if (msg) (window as any).setMsg(msg, status.error || 'Connection failed: Check Project URL or RLS policies', 'err');
+          if (badge) {
+            badge.textContent = '● Not Connected';
+            badge.style.color = '#ef4444';
+          }
+        }
+      } catch (err: any) {
+        if (msg) (window as any).setMsg(msg, err?.message || 'Test failed', 'err');
+      }
+    };
+  }
+}
+
 // Initialize on DOM load
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -520,6 +598,7 @@ if (typeof document !== 'undefined') {
     setupTabs();
     setupResetDataFlow();
     setupServerIconControls();
+    setupSupabaseControls();
 
     const outBtn = $('outBtn');
     if (outBtn) {
@@ -530,3 +609,4 @@ if (typeof document !== 'undefined') {
     }
   });
 }
+

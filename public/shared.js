@@ -683,6 +683,21 @@ function createFallbackClient(){
 }
 
 window.sb = createFallbackClient();
+
+// Connect real Supabase client when configured
+(async function initSupabaseClientBridge(){
+  try {
+    const res = await fetch('/api/supabase/config');
+    const cfg = await res.json();
+    if(cfg && cfg.url && cfg.publishableKey && window.supabase && typeof window.supabase.createClient === 'function'){
+      window.supabaseClient = window.supabase.createClient(cfg.url, cfg.publishableKey);
+      console.log('[TMC] Connected with Supabase project:', cfg.url);
+    }
+  } catch(e) {
+    console.warn('[TMC] Supabase client bridge check:', e);
+  }
+})();
+
 window.$=id=>document.getElementById(id);
 window.esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 window.safeUrl=u=>/^https?:\/\/[^\s"'<>]{3,300}$/i.test(u||'')?u:'';

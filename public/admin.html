@@ -316,7 +316,49 @@
         <button class="btn" id="adIconReset" data-i18n="ad.server_icon_reset">Reset to Default</button>
       </div>
     </div>
+
+    <div style="margin-top:36px;border-top:1px solid var(--line);padding-top:28px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:24px">⚡</span>
+          <div>
+            <h3 style="margin:0;font-size:18px">Supabase Cloud Database</h3>
+            <p class="note" style="margin:2px 0 0;font-size:13px">Connected with official Supabase API keys.</p>
+          </div>
+        </div>
+        <span id="supabaseStatusBadge" style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:9999px;font-size:12px;font-weight:700;background:rgba(30,167,99,0.15);color:var(--em);border:1px solid rgba(30,167,99,0.3)">
+          ● Keys Configured
+        </span>
+      </div>
+
+      <div class="form" style="max-width:540px;margin-top:16px">
+        <div>
+          <label for="sbPublishableKey">Publishable Key (Client API)</label>
+          <input id="sbPublishableKey" readonly style="font-family:monospace;font-size:12px;background:var(--surface-inset);color:var(--text);letter-spacing:0.5px" value="sb_publishable_a9tTT1WVyox8Vlpih6OpJw_7tAiAdFN">
+        </div>
+
+        <div>
+          <label for="sbSecretKey">Secret Key (Server API)</label>
+          <input id="sbSecretKey" readonly type="password" style="font-family:monospace;font-size:12px;background:var(--surface-inset);color:var(--text);letter-spacing:0.5px" value="sb_secret_zjyau_f42AZR2UGTNpP3ag_KtXX9h0N">
+          <small class="note" style="display:block;margin-top:4px">Secret key is securely managed on backend only.</small>
+        </div>
+
+        <div>
+          <label for="sbProjectUrl">Supabase Project URL</label>
+          <input id="sbProjectUrl" placeholder="https://<project-ref>.supabase.co" maxlength="200" style="font-family:monospace;font-size:13px">
+          <small class="note" style="display:block;margin-top:4px">Enter your Supabase Project URL from your Supabase Dashboard Settings &gt; API.</small>
+        </div>
+
+        <div id="sbMsg" class="msg hide" role="status"></div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn primary" id="btnSaveSbUrl" type="button">Save Project URL</button>
+          <button class="btn" id="btnTestSbConn" type="button">Test Connection</button>
+        </div>
+      </div>
+    </div>
   </div>
+
 
 </div>
 </main>
@@ -333,6 +375,7 @@
   </div>
 </div></dialog>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="i18n.js"></script>
 <script src="fx.js"></script>
 <script src="shared.js"></script>

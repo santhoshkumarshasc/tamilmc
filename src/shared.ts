@@ -1356,11 +1356,28 @@ declare global {
     ICONS: string[];
     drawCert: typeof drawCert;
     downloadCanvas: typeof downloadCanvas;
+    supabaseClient?: any;
+    supabase?: any;
   }
 }
 
 if (typeof window !== 'undefined') {
   window.sb = createFallbackClient();
+
+  // Connect real Supabase client when configured
+  (async function initSupabaseClientBridge() {
+    try {
+      const res = await fetch('/api/supabase/config');
+      const cfg = await res.json();
+      if (cfg && cfg.url && cfg.publishableKey && window.supabase && typeof window.supabase.createClient === 'function') {
+        window.supabaseClient = window.supabase.createClient(cfg.url, cfg.publishableKey);
+        console.log('[TMC] Connected with Supabase project:', cfg.url);
+      }
+    } catch (e) {
+      console.warn('[TMC] Supabase client bridge check:', e);
+    }
+  })();
+
   window.$ = $;
   window.esc = esc;
   window.safeUrl = safeUrl;
@@ -1374,3 +1391,4 @@ if (typeof window !== 'undefined') {
   window.drawCert = drawCert;
   window.downloadCanvas = downloadCanvas;
 }
+

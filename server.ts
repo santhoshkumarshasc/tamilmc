@@ -20,10 +20,46 @@ app.use((_req: Request, res: Response, next: NextFunction): void => {
 // JSON body parsing for API endpoints
 app.use(express.json({ limit: '10mb' }));
 
+import {
+  checkSupabaseConnection,
+  SUPABASE_PUBLISHABLE_KEY,
+  SUPABASE_SECRET_KEY,
+  SUPABASE_URL,
+  getSupabaseAdmin,
+  getSupabaseClient
+} from './src/supabase.js';
+
 // Health check endpoint
 app.get('/api/health', (_req: Request, res: Response): void => {
   res.json({ status: 'ok', runtime: 'typescript', timestamp: new Date().toISOString() });
 });
+
+// Supabase Status & Config Endpoints
+app.get('/api/supabase/status', async (_req: Request, res: Response): Promise<void> => {
+  const status = await checkSupabaseConnection();
+  res.json(status);
+});
+
+app.get('/api/supabase/config', (_req: Request, res: Response): void => {
+  res.json({
+    configured: Boolean(process.env.SUPABASE_URL || SUPABASE_URL),
+    url: process.env.SUPABASE_URL || SUPABASE_URL || '',
+    publishableKey: SUPABASE_PUBLISHABLE_KEY,
+    hasSecretKey: Boolean(SUPABASE_SECRET_KEY)
+  });
+});
+
+app.post('/api/supabase/set-url', async (req: Request, res: Response): Promise<void> => {
+  const url = String(req.body?.url || '').trim();
+  if (!url || !url.startsWith('https://')) {
+    res.status(400).json({ success: false, error: 'Valid HTTPS Supabase URL required (e.g. https://xyzcompany.supabase.co)' });
+    return;
+  }
+  process.env.SUPABASE_URL = url;
+  const status = await checkSupabaseConnection();
+  res.json({ success: true, status });
+});
+
 
 // In-memory verification codes cache with 15-minute TTL
 interface VerificationRecord {
