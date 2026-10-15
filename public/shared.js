@@ -107,7 +107,40 @@ function createFallbackClient(){
         eq:async(col,val)=>{
           db=loadDb();
           const idx=db.profiles.findIndex(p=>String(p[col])===String(val));
-          if(idx>=0){db.profiles[idx]={...db.profiles[idx],...data};saveDb(db);return {data:db.profiles[idx],error:null}}
+          if(idx>=0){
+            db.profiles[idx]={...db.profiles[idx],...data};
+            const uid=String(db.profiles[idx].id);
+            let welcomeCert=db.certs.find(c=>c.user_id===uid&&c.is_welcome);
+            if(!welcomeCert){
+              const rnd=()=>Math.random().toString(36).substring(2,6).toUpperCase();
+              welcomeCert={
+                id:'cert-welcome-'+Date.now(),
+                cert_code:`CERT-TMC-WELCOME-${rnd()}`,
+                token:`TMC-WELCOME-${rnd()}`,
+                recipient_name:db.profiles[idx].display_name||'Minecraft Creator',
+                channel_name:db.profiles[idx].channel_name||'Community Member',
+                award:'Welcome to Tamil MC Community',
+                award_ta:'தமிழ் MC சமூக வரவேற்பு',
+                heading:'Community Welcome Certificate',
+                heading_ta:'சமூக வரவேற்புச் சான்றிதழ்',
+                content_title:'Official Member of TMC Awards',
+                content_url:db.profiles[idx].channel_url||'',
+                message:'Welcome to the Tamil Minecraft community! Official certified creator of TMC Awards.',
+                theme:'emerald',
+                icon:'shield',
+                type_name:'Community Welcome',
+                status:'redeemed',
+                user_id:uid,
+                is_welcome:true,
+                issued_at:new Date().toISOString()
+              };
+              db.certs.unshift(welcomeCert);
+              db.profiles[idx].has_welcome=true;
+              db.profiles[idx].cert_count=(db.profiles[idx].cert_count||0)+1;
+            }
+            saveDb(db);
+            return {data:db.profiles[idx],welcomeCert,error:null};
+          }
           return {data:null,error:null};
         }
       })
@@ -175,7 +208,41 @@ function createFallbackClient(){
 
       if(fn==='my_certificates'){
         const uid=db.session?db.session.user.id:null;
-        return {data:uid?db.certs.filter(c=>c.user_id===uid):[],error:null};
+        if(!uid) return {data:[],error:null};
+        let userCerts=db.certs.filter(c=>c.user_id===uid);
+        const myProf=db.profiles.find(p=>p.id===uid);
+        if(!userCerts.some(c=>c.is_welcome)){
+          const rnd=()=>Math.random().toString(36).substring(2,6).toUpperCase();
+          const welcomeCert={
+            id:'cert-welcome-'+Date.now(),
+            cert_code:`CERT-TMC-WELCOME-${rnd()}`,
+            token:`TMC-WELCOME-${rnd()}`,
+            recipient_name:(myProf&&myProf.display_name)||(db.session.user&&db.session.user.name)||'Minecraft Creator',
+            channel_name:(myProf&&myProf.channel_name)||'Community Member',
+            award:'Welcome to Tamil MC Community',
+            award_ta:'தமிழ் MC சமூக வரவேற்பு',
+            heading:'Community Welcome Certificate',
+            heading_ta:'சமூக வரவேற்புச் சான்றிதழ்',
+            content_title:'Official Member of TMC Awards',
+            content_url:(myProf&&myProf.channel_url)||'',
+            message:'Welcome to the Tamil Minecraft community! Official certified creator of TMC Awards.',
+            theme:'emerald',
+            icon:'shield',
+            type_name:'Community Welcome',
+            status:'redeemed',
+            user_id:uid,
+            is_welcome:true,
+            issued_at:new Date().toISOString()
+          };
+          db.certs.unshift(welcomeCert);
+          if(myProf){
+            myProf.has_welcome=true;
+            myProf.cert_count=(myProf.cert_count||0)+1;
+          }
+          saveDb(db);
+          userCerts=[welcomeCert, ...userCerts];
+        }
+        return {data:userCerts,error:null};
       }
       if(fn==='redeem_certificate'){
         const tk=(params.p_token||'').trim().toUpperCase();

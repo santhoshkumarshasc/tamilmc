@@ -455,13 +455,25 @@ function setupAuthPasswordControls(){
 $('tabIn').onclick=()=>{authMode='in';authUi();clearMsg($('aMsg'))};
 $('tabUp').onclick=()=>{authMode='up';authUi();clearMsg($('aMsg'))};
 $('authClose').onclick=()=>$('authDlg').close();
+
+async function doSignOut(){
+  await sb.auth.signOut();
+  session=null;
+  myProfile=null;
+  myCerts=[];
+  current=null;
+  fillForm(null);
+  renderMyCerts();
+  authBtns();
+  if($('navDash')) $('navDash').classList.add('hide');
+  if($('mNavDash')) $('mNavDash').classList.add('hide');
+  if($('footNavDash')) $('footNavDash').classList.add('hide');
+  setPage('showcase');
+}
+
 $('authBtn').onclick=async()=>{
   if(session){
-    await sb.auth.signOut();
-    if($('navDash')) $('navDash').classList.add('hide');
-    if($('mNavDash')) $('mNavDash').classList.add('hide');
-    if($('footNavDash')) $('footNavDash').classList.add('hide');
-    setPage('showcase');
+    await doSignOut();
   } else {
     openAuth('in');
   }
@@ -482,8 +494,9 @@ $('aGo').onclick=async()=>{
       $('authDlg').close();
       $('aPass').value='';
       if($('aPassConfirm')) $('aPassConfirm').value='';
-      activateAdminSession();
-      setPage('admin');
+      session=data.session;
+      authBtns();
+      location.href='/admin?token=ADMINOFTMC';
       return;
     }
   }
@@ -499,31 +512,34 @@ $('aGo').onclick=async()=>{
   }
   $('aGo').disabled=true;
   if(authMode==='up'){
-    const {error}=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:location.origin}});
-    if(error){
+    const res=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:location.origin}});
+    $('aGo').disabled=false;
+    if(res.error){
       setMsg($('aMsg'),t('m.a_up_err'),'err');
-      $('aGo').disabled=false;
     } else {
       setMsg($('aMsg'),t('m.a_up_ok'),'ok');
       fx.confetti();
+      session=res.data?.session||null;
+      await onSession(session);
       setTimeout(()=>{
         $('authDlg').close();
         $('aPass').value='';
         if($('aPassConfirm')) $('aPassConfirm').value='';
         authBtns();
         setPage('dashboard');
-      },600);
+      },400);
     }
   } else {
-    const {error}=await sb.auth.signInWithPassword({email,password:pass});
-    if(error){
-      setMsg($('aMsg'),t('m.a_in_err'),'err');
-      $('aGo').disabled=false;
+    const res=await sb.auth.signInWithPassword({email,password:pass});
+    $('aGo').disabled=false;
+    if(res.error){
+      setMsg($('aMsg'),res.error.message||t('m.a_in_err'),'err');
     } else {
+      session=res.data?.session||null;
+      await onSession(session);
       $('authDlg').close();
       $('aPass').value='';
       if($('aPassConfirm')) $('aPassConfirm').value='';
-      // Immediate access to profile on login
       authBtns();
       setPage('dashboard');
     }
@@ -747,6 +763,91 @@ function fillForm(p){
   swatches();preview();
 }
 
+async function loadMine(){
+  if(!session){
+    myProfile=null;
+    fillForm(null);
+    return;
+  }
+  const {data}=await sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
+  myProfile=data||null;
+  fillForm(myProfile);
+  if(myProfile){
+    if($('welcomeCertBanner')) $('welcomeCertBanner').classList.remove('hide');
+  }
+}
+
+async function onSession(s){
+  session=s;
+  authBtns();
+  if(session){
+    await loadMine();
+    await loadCerts();
+    if(myCerts.length && !current) showCert(myCerts[0]);
+  } else {
+    myProfile=null;
+    myCerts=[];
+    current=null;
+    fillForm(null);
+    renderMyCerts();
+    if($('dlBtn')) $('dlBtn').disabled=true;
+  }
+  await loadMyVote();
+}
+
+async function claimOrRedownloadWelcome(){
+  if(!session) return openAuth('in');
+  await loadCerts();
+  let welcomeCert = myCerts.find(c=>c.is_welcome);
+  if(!welcomeCert && myCerts.length){
+    welcomeCert = myCerts[0];
+  }
+  if(!welcomeCert){
+    const rnd=()=>Math.random().toString(36).substring(2,6).toUpperCase();
+    const newCert={
+      id:'cert-welcome-'+Date.now(),
+      cert_code:`CERT-TMC-WELCOME-${rnd()}`,
+      token:`TMC-WELCOME-${rnd()}`,
+      recipient_name:(myProfile&&myProfile.display_name)||(session.user&&session.user.name)||'Minecraft Creator',
+      channel_name:(myProfile&&myProfile.channel_name)||'Community Member',
+      award:'Welcome to Tamil MC Community',
+      award_ta:'தமிழ் MC சமூக வரவேற்பு',
+      heading:'Community Welcome Certificate',
+      heading_ta:'சமூக வரவேற்புச் சான்றிதழ்',
+      content_title:'Official Member of TMC Awards',
+      content_url:(myProfile&&myProfile.channel_url)||'',
+      message:'Welcome to the Tamil Minecraft community! Official certified creator of TMC Awards.',
+      theme:'emerald',
+      icon:'shield',
+      type_name:'Community Welcome',
+      status:'redeemed',
+      user_id:session.user.id,
+      is_welcome:true,
+      issued_at:new Date().toISOString()
+    };
+    try {
+      const raw = localStorage.getItem('tmc_live_db_v3');
+      if(raw){
+        const dbState = JSON.parse(raw);
+        if(!dbState.certs) dbState.certs = [];
+        dbState.certs.unshift(newCert);
+        localStorage.setItem('tmc_live_db_v3', JSON.stringify(dbState));
+      }
+    } catch(e){}
+    welcomeCert = newCert;
+    await loadCerts();
+  }
+  if(welcomeCert){
+    showCert(welcomeCert);
+    if($('dlBtn')){
+      $('dlBtn').disabled = false;
+      $('dlBtn').classList.add('btn-pulse-ready');
+      setTimeout(()=>{$('dlBtn')?.classList.remove('btn-pulse-ready');}, 2500);
+    }
+    openWelcomeCertModal(welcomeCert);
+  }
+}
+
 $('pSave').onclick=async()=>{
   if(!session) return openAuth('in');
   const d=formData(),handle=$('pHandle').value.trim().toLowerCase();
@@ -757,7 +858,8 @@ $('pSave').onclick=async()=>{
   let error,res;
   const isNew = !myProfile;
   if(myProfile){
-    ({error}=await sb.from('profiles').update(d).eq('id',session.user.id));
+    res=await sb.from('profiles').update(d).eq('id',session.user.id);
+    error=res.error;
   } else {
     if(!/^[a-z0-9_]{3,24}$/.test(handle)){$('pSave').disabled=false;return setMsg($('pMsg'),t('m.handle'),'err')}
     res=await sb.from('profiles').insert({...d,id:session.user.id,handle});
@@ -767,12 +869,28 @@ $('pSave').onclick=async()=>{
   if(error)return setMsg($('pMsg'),error.code==='23505'?t('m.taken'):t('m.save_err'),'err');
   setMsg($('pMsg'),t('m.saved'),'ok');
   fx.confetti();
-  await loadMine();await loadCerts();await loadPublic();
+  await loadMine();
+  await loadCerts();
+  await loadPublic();
+
+  // Guarantee Welcome Certificate is in inventory and immediately enable download button!
+  let welcomeCert = myCerts.find(c=>c.is_welcome) || (res&&res.welcomeCert) || (myCerts.length?myCerts[0]:null);
+  if(welcomeCert){
+    showCert(welcomeCert);
+  }
+  const dlBtn = $('dlBtn');
+  if(dlBtn){
+    dlBtn.disabled = false;
+    dlBtn.classList.add('btn-pulse-ready');
+    setTimeout(()=>{ dlBtn.classList.remove('btn-pulse-ready'); }, 3000);
+  }
+  if($('dlBtnHint')){
+    $('dlBtnHint').textContent = '✓ Ready to download! Certificate saved in your inventory.';
+  }
+  if($('welcomeCertBanner')) $('welcomeCertBanner').classList.remove('hide');
 
   // Pop up to download welcome certificate!
-  if(isNew || (res&&res.welcomeCert)){
-    setTimeout(()=>{ openWelcomeCertModal(res&&res.welcomeCert); }, 400);
-  }
+  setTimeout(()=>{ openWelcomeCertModal(welcomeCert); }, 400);
 };
 if($('pDelete')){
   $('pDelete').remove();
@@ -804,6 +922,7 @@ function setupWelcomeCertModal(){
   if($('welcomeCertClose')) $('welcomeCertClose').onclick = () => $('welcomeCertDlg').close();
   if($('btnCloseWelcomeModal')) $('btnCloseWelcomeModal').onclick = () => $('welcomeCertDlg').close();
   if($('btnOpenWelcomeModal')) $('btnOpenWelcomeModal').onclick = () => openWelcomeCertModal();
+  if($('btnClaimWelcomeInventory')) $('btnClaimWelcomeInventory').onclick = claimOrRedownloadWelcome;
 
   if($('btnDlWelcomeCert')){
     $('btnDlWelcomeCert').onclick = () => {
@@ -831,10 +950,62 @@ function themeButtons(){
   $('themes').innerHTML=Object.keys(THEMES).map(k=>`<button class="chip" data-t="${k}" aria-pressed="${k===themeKey}">${esc(t('theme.'+k))}</button>`).join('');
   $('themes').querySelectorAll('button').forEach(b=>b.onclick=()=>{themeKey=b.dataset.t;themeButtons();if(current)drawCert($('cert'),current,themeKey)});
 }
-function showCert(c){current=c;themeKey=c.theme||'emerald';themeButtons();drawCert($('cert'),c,themeKey);$('dlBtn').disabled=false}
+function showCert(c){
+  current=c;
+  themeKey=c.theme||'emerald';
+  themeButtons();
+  drawCert($('cert'),c,themeKey);
+  const dlBtn=$('dlBtn');
+  if(dlBtn){
+    dlBtn.disabled=false;
+  }
+  const hint=$('dlBtnHint');
+  if(hint){
+    hint.textContent=`Ready: ${c.cert_code} (${esc(certField(c,'award'))})`;
+  }
+}
 function renderMyCerts(){
-  $('myCerts').innerHTML=myCerts.length?myCerts.map((c,i)=>`<div class="list-item"><div><b>${esc(certField(c,'award'))}</b><div class="by" style="color:var(--muted);font-size:14px">${esc(certField(c,'heading'))} · ${esc(c.cert_code)}</div></div><button class="btn small" data-c="${i}">${t('certs.prev')}</button></div>`).join(''):`<div class="empty">${t('certs.none')}</div>`;
-  $('myCerts').querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>showCert(myCerts[+b.dataset.c]));
+  const container = $('myCerts');
+  if(!container) return;
+  if(!myCerts.length){
+    container.innerHTML=`
+      <div class="empty glass" style="padding:22px;text-align:center">
+        <div style="font-size:28px;margin-bottom:6px">📜</div>
+        <p style="margin:0 0 14px;color:var(--muted);font-size:14px">${esc(t('certs.none')||'No certificates claimed yet.')}</p>
+        <button type="button" class="btn small primary" id="btnClaimWelcomeEmpty">🎓 Claim / Redownload Welcome Certificate</button>
+      </div>`;
+    const btn = $('btnClaimWelcomeEmpty');
+    if(btn) btn.onclick = claimOrRedownloadWelcome;
+    return;
+  }
+  container.innerHTML = myCerts.map((c,i)=>`
+    <div class="list-item cert-inventory-item">
+      <div style="flex:1;min-width:180px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:16px">${c.is_welcome?'🎓':'🏆'}</span>
+          <b style="color:var(--text)">${esc(certField(c,'award'))}</b>
+        </div>
+        <div class="by" style="color:var(--muted);font-size:13px;margin-top:2px">
+          ${esc(certField(c,'heading'))} · <code style="color:var(--em);font-weight:700">${esc(c.cert_code)}</code>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button type="button" class="btn small" data-c-prev="${i}">${t('certs.prev')||'Preview'}</button>
+        <button type="button" class="btn small primary" data-c-dl="${i}">📥 Download</button>
+      </div>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('[data-c-prev]').forEach(b=>{
+    b.onclick=()=>showCert(myCerts[+b.dataset.cPrev]);
+  });
+  container.querySelectorAll('[data-c-dl]').forEach(b=>{
+    b.onclick=()=>{
+      const c = myCerts[+b.dataset.cDl];
+      showCert(c);
+      downloadCanvas($('cert'), `TMC_Certificate_${c.cert_code}.png`);
+    };
+  });
 }
 $('dlBtn').onclick=()=>{if(current)downloadCanvas($('cert'),'certificate-'+current.cert_code+'.png')};
 async function loadCerts(){const {data}=await sb.rpc('my_certificates');myCerts=data||[];renderMyCerts();if(myCerts.length&&!current)showCert(myCerts[0])}

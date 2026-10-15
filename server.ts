@@ -32,23 +32,25 @@ const NOT_FOUND_PAGE = `<!DOCTYPE html>
   <title>404 - Page Not Found | TMC Awards</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f17; color: #f1f5f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; text-align: center; }
-    .box { max-width: 480px; padding: 48px 24px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
-    .badge { display: inline-block; padding: 4px 12px; background: rgba(239,68,68,0.15); color: #f87171; border-radius: 9999px; font-size: 13px; font-weight: 700; margin-bottom: 16px; border: 1px solid rgba(239,68,68,0.3); }
-    h1 { font-size: 76px; margin: 0; color: #ef4444; font-weight: 900; line-height: 1; letter-spacing: -2px; }
-    h2 { font-size: 24px; margin: 16px 0 10px; color: #f8fafc; font-weight: 700; }
-    p { color: #94a3b8; font-size: 15px; line-height: 1.6; margin: 0 0 28px; }
-    .btn { display: inline-block; padding: 12px 26px; background: #1f9d5e; color: #fff; text-decoration: none; border-radius: 12px; font-weight: 700; transition: transform 0.15s, background 0.15s; }
-    .btn:hover { background: #167e4b; transform: translateY(-1px); }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Outfit", sans-serif; background: #0b140f; color: #ecfdf5; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; text-align: center; padding: 20px; box-sizing: border-box; }
+    .box { max-width: 500px; width: 100%; padding: 48px 28px; background: #122018; border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 24px; box-shadow: 0 20px 48px rgba(0,0,0,0.65), 0 0 30px rgba(34, 197, 94, 0.12); position: relative; overflow: hidden; }
+    .box::before { content: ''; position: absolute; top: -50px; left: 50%; transform: translateX(-50%); width: 200px; height: 100px; background: radial-gradient(circle, rgba(34, 197, 94, 0.25) 0%, transparent 70%); pointer-events: none; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; background: rgba(34, 197, 94, 0.15); color: #4ade80; border-radius: 9999px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; margin-bottom: 20px; border: 1px solid rgba(34, 197, 94, 0.35); text-transform: uppercase; }
+    h1 { font-size: 88px; margin: 0; background: linear-gradient(135deg, #4ade80 0%, #22c55e 40%, #fbbf24 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; line-height: 1; letter-spacing: -3px; }
+    h2 { font-size: 26px; margin: 16px 0 10px; color: #ffffff; font-weight: 800; letter-spacing: -0.01em; }
+    p { color: #8ea899; font-size: 15px; line-height: 1.6; margin: 0 0 30px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 28px; background: #189855; color: #ffffff; text-decoration: none; border-radius: 9999px; font-weight: 700; font-size: 15px; transition: transform 0.15s, background 0.15s, box-shadow 0.15s; box-shadow: 0 4px 14px rgba(24, 152, 85, 0.4); }
+    .btn:hover { background: #22c55e; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(34, 197, 94, 0.5); }
+    .btn:active { transform: translateY(0); }
   </style>
 </head>
 <body>
   <div class="box">
-    <div class="badge">404 ERROR</div>
+    <div class="badge">⛏️ TMC AWARDS • 404</div>
     <h1>404</h1>
-    <h2>Page Not Found</h2>
-    <p>The requested page does not exist or access has been restricted. Please check the URL and try again.</p>
-    <a href="/" class="btn">Return to TMC Showcase</a>
+    <h2>Lost in the Nether?</h2>
+    <p>The requested page does not exist or access has been restricted. Return to the TMC Awards showcase to browse creators and cast your vote.</p>
+    <a href="/" class="btn">Return to TMC Showcase →</a>
   </div>
 </body>
 </html>`;

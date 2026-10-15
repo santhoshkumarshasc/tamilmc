@@ -20,27 +20,30 @@
 </script>
 </head>
 <body data-title="ad.title">
-<nav id="topNav"><div class="wrap nav-in">
-  <a class="logo" href="/" aria-label="Home">
-    <span class="logo-mark" id="navIconSlot">
-      <img src="/logo.png" alt="TMC Awards" class="nav-brand-img" style="width:28px;height:28px;object-fit:cover;border-radius:6px;display:block">
+<nav id="topNav" class="admin-nav"><div class="wrap nav-in admin-nav-in">
+  <div class="admin-nav-left">
+    <a class="logo" href="/" aria-label="Home">
+      <span class="logo-mark" id="navIconSlot">
+        <img src="/logo.png" alt="TMC Awards" class="nav-brand-img" style="width:28px;height:28px;object-fit:cover;border-radius:6px;display:block">
+      </span>
+      <span class="logo-text">
+        <b class="logo-brand">TMC AWARDS</b>
+        <span class="logo-sub">Admin Panel</span>
+      </span>
+    </a>
+    <a href="/" class="btn small admin-back-btn">← Site</a>
+  </div>
+  <div class="admin-nav-right">
+    <span class="admin-timer-pill hide" id="admSessionTimer">
+      ⏱ <b id="admTimeLeft">05:00</b>
     </span>
-    <span class="logo-text">
-      <b class="logo-brand">TMC AWARDS</b>
-      <span class="logo-sub">Admin Panel</span>
-    </span>
-  </a>
-  <a href="/" class="btn small" style="padding:6px 14px">← Back to Site</a>
-  <span style="margin-left:auto"></span>
-  <span class="admin-timer-pill hide" id="admSessionTimer" style="margin-right:10px">
-    ⏱ Session: <b id="admTimeLeft" style="margin-left:4px">05:00</b>
-  </span>
-  <button class="theme-toggle" id="themeBtn" aria-label="Toggle dark/light mode" title="Toggle theme">
-    <span class="theme-icon-light">☀️</span>
-    <span class="theme-icon-dark">🌙</span>
-  </button>
-  <button class="lang" id="langBtn" aria-label="Language">தமிழ்</button>
-  <button class="btn small hide" id="outBtn" data-i18n="auth.out">Sign out</button>
+    <button class="theme-toggle" id="themeBtn" aria-label="Toggle dark/light mode" title="Toggle theme">
+      <span class="theme-icon-light">☀️</span>
+      <span class="theme-icon-dark">🌙</span>
+    </button>
+    <button class="lang" id="langBtn" aria-label="Language">தமிழ்</button>
+    <button class="btn small hide" id="outBtn" data-i18n="auth.out">Sign out</button>
+  </div>
 </div></nav>
 
 <main class="wrap" style="padding-top:36px;padding-bottom:60px">
@@ -87,7 +90,7 @@
 </div>
 
 <div id="app" class="hide">
-  <div class="tabs">
+  <div class="tabs admin-tabs-scroll">
     <button class="chip" data-tab="certs" aria-pressed="true" data-i18n="ad.tab.certs">Certificates</button>
     <button class="chip" data-tab="creators" aria-pressed="false" data-i18n="ad.tab.creators">Profiles</button>
     <button class="chip" data-tab="users" aria-pressed="false" data-i18n="ad.tab.users">User Accounts</button>

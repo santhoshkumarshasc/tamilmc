@@ -2506,3 +2506,107 @@ dialog.dlg-wide {
   .rv { opacity: 1; translate: none; transition: none; }
   .pcard { transform: none !important; }
 }
+
+/* ==========================================================
+   MOBILE RESPONSIVE ADMIN PANEL & INVENTORY ENHANCEMENTS
+   ========================================================== */
+.admin-nav {
+  height: auto;
+  min-height: 64px;
+  padding: 8px 0;
+}
+
+.admin-nav-in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.admin-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+
+.admin-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.admin-tabs-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 2px 12px;
+  margin-bottom: 20px;
+  scrollbar-width: none;
+  flex-wrap: nowrap;
+}
+
+.admin-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-tabs-scroll .chip {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 13.5px;
+  padding: 8px 18px;
+}
+
+@media (max-width: 768px) {
+  .admin-nav-in {
+    gap: 8px;
+  }
+  .admin-nav-left {
+    gap: 8px;
+  }
+  .admin-nav-right {
+    gap: 6px;
+  }
+  .admin-back-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+  .admin-timer-pill {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  .tbl table {
+    min-width: 540px;
+  }
+  .token-out {
+    font-size: 16px;
+    padding: 12px;
+  }
+}
+
+/* Certificate Inventory Styles */
+.cert-inventory-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line-subtle);
+  flex-wrap: wrap;
+}
+
+.btn-pulse-ready {
+  animation: pulseGreen 1.8s ease-in-out infinite;
+}
+
+@keyframes pulseGreen {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
