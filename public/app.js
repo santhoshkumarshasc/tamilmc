@@ -517,17 +517,61 @@ function setupDiscordAuthControls(){
   if(btnVerify) btnVerify.onclick = () => connectDiscord();
   if(userIn) userIn.onkeydown = (e) => { if(e.key==='Enter'){ e.preventDefault(); connectDiscord(); } };
 
+  let oauthPopup = null;
+  let oauthPollTimer = null;
+
+  async function handleOAuthSuccess(payload){
+    if(oauthPollTimer) { clearInterval(oauthPollTimer); oauthPollTimer = null; }
+    if(oauthPopup && !oauthPopup.closed) {
+      try { oauthPopup.close(); } catch(e){}
+    }
+    try { localStorage.removeItem('tmc_oauth_payload'); } catch(e){}
+
+    if(payload?.user){
+      connectedDiscordUser = payload.user;
+      await loginWithDiscordUser(connectedDiscordUser);
+      return;
+    }
+
+    const targetUser = (userIn && userIn.value.trim()) || 'discord_creator';
+    await connectDiscord(targetUser);
+    if(connectedDiscordUser){
+      await loginWithDiscordUser(connectedDiscordUser);
+    }
+  }
+
   if(btnOAuth){
     btnOAuth.onclick = async () => {
       try {
         const redirectUri = `${window.location.origin}/auth/discord/callback`;
         const res = await fetch(`/api/auth/discord/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
         const data = await res.json();
-        const popup = window.open(data.url || 'https://discord.com/channels/@me', 'discord_oauth_popup', 'width=600,height=700');
-        if(!popup){
+        try { localStorage.removeItem('tmc_oauth_payload'); } catch(e){}
+
+        oauthPopup = window.open(data.url || 'https://discord.com/channels/@me', 'discord_oauth_popup', 'width=600,height=700');
+        if(!oauthPopup){
           const u = prompt('Please allow popups for Discord authentication, or enter your Discord username to link:', (userIn ? userIn.value : ''));
           if(u) connectDiscord(u);
+          return;
         }
+
+        if(oauthPollTimer) clearInterval(oauthPollTimer);
+        oauthPollTimer = setInterval(() => {
+          try {
+            const raw = localStorage.getItem('tmc_oauth_payload');
+            if(raw){
+              const parsed = JSON.parse(raw);
+              if(parsed && parsed.type === 'OAUTH_AUTH_SUCCESS'){
+                handleOAuthSuccess(parsed);
+                return;
+              }
+            }
+          } catch(e){}
+          if(!oauthPopup || oauthPopup.closed){
+            clearInterval(oauthPollTimer);
+            oauthPollTimer = null;
+          }
+        }, 300);
       } catch(e){
         const u = prompt('Enter your Discord username (or username#0000) to link with TMC Awards:', (userIn ? userIn.value : ''));
         if(u) connectDiscord(u);
@@ -686,21 +730,34 @@ function setupDiscordAuthControls(){
     };
   }
 
-  // Cross-origin message listener for OAuth popup completion
+  // 1. Cross-origin message listener for OAuth popup completion
   window.addEventListener('message', async (event) => {
     if(event.data?.type === 'OAUTH_AUTH_SUCCESS' && (event.data?.provider === 'discord' || event.data?.provider === 'github')){
-      if(event.data?.user){
-        connectedDiscordUser = event.data.user;
-        await loginWithDiscordUser(connectedDiscordUser);
-        return;
-      }
-      const targetUser = (userIn && userIn.value.trim()) || 'discord_creator';
-      await connectDiscord(targetUser);
-      if(connectedDiscordUser){
-        await loginWithDiscordUser(connectedDiscordUser);
-      }
+      await handleOAuthSuccess(event.data);
     }
   });
+
+  // 2. Storage event listener (when popup writes to localStorage)
+  window.addEventListener('storage', async (event) => {
+    if(event.key === 'tmc_oauth_payload' && event.newValue){
+      try {
+        const parsed = JSON.parse(event.newValue);
+        if(parsed && parsed.type === 'OAUTH_AUTH_SUCCESS'){
+          await handleOAuthSuccess(parsed);
+        }
+      } catch(e){}
+    }
+  });
+
+  // 3. BroadcastChannel listener
+  try {
+    const bc = new BroadcastChannel('tmc_oauth_channel');
+    bc.onmessage = async (event) => {
+      if(event.data?.type === 'OAUTH_AUTH_SUCCESS'){
+        await handleOAuthSuccess(event.data);
+      }
+    };
+  } catch(e){}
 }
 
 async function loginWithDiscordUser(discordUser){
@@ -720,14 +777,26 @@ async function loginWithDiscordUser(discordUser){
       return;
     }
     session = res.data?.session || null;
+
+    // Permanently persist session in localStorage so user stays logged in until they click Sign Out
+    if(session){
+      try {
+        localStorage.setItem('tmc_auth_session', JSON.stringify(session));
+      } catch(e){}
+    }
+
     await onSession(session);
     fx.confetti();
     setMsg($('aMsg'), t('m.a_up_ok') || 'Discord account connected! Redirecting...', 'ok');
-    setTimeout(()=>{
-      $('authDlg').close();
-      authBtns();
-      setPage('dashboard');
-    }, 400);
+    
+    // Close modal dialog immediately
+    const dlg = $('authDlg');
+    if(dlg){
+      if(typeof dlg.close === 'function') dlg.close();
+      dlg.removeAttribute('open');
+    }
+    authBtns();
+    setPage('dashboard');
   } catch(e){
     setMsg($('aMsg'), 'Failed to connect with Discord. Try again.', 'err');
   }
@@ -969,15 +1038,22 @@ async function onSession(s){
     await loadMine();
     await loadCerts();
     if(myCerts.length && !current) showCert(myCerts[0]);
+    try {
+      const {data}=await sb.rpc('my_likes');
+      myLikes=new Set(data||[]);
+    } catch(e){}
+    await loadMyVote();
   } else {
     myProfile=null;
     myCerts=[];
     current=null;
+    myLikes=new Set();
+    myVoteId=null;
     fillForm(null);
     renderMyCerts();
     if($('dlBtn')) $('dlBtn').disabled=true;
   }
-  await loadMyVote();
+  renderGrid();
 }
 
 async function claimOrRedownloadWelcome(){
@@ -1316,22 +1392,7 @@ if(trophyStage&&heroCup&&matchMedia('(pointer:fine)').matches){
   });
 }
 
-/* ---------- SESSION & INITIALIZATION ---------- */
-async function loadMine(){
-  if(!session) return;
-  const {data}=await sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
-  myProfile=data||null;fillForm(myProfile);
-}
-async function onSession(s){
-  session=s;
-  authBtns();
-  if(s){
-    await loadMine();await loadCerts();
-    const {data}=await sb.rpc('my_likes');myLikes=new Set(data||[]);
-    await loadMyVote();
-  }else{myProfile=null;myCerts=[];myLikes=new Set();myVoteId=null;current=null}
-  renderGrid();
-}
+
 function samples(){
   drawCert($('cert'),current||{recipient_name:t('cert.sample.n'),channel_name:t('cert.sample.c'),award:'Best Creator Award',message:t('cert.sample.m'),cert_code:'CERT-XXXXXXXX',issued_at:new Date()},current?themeKey:'emerald');
   drawCert($('rCertCanvas'),claimedCert||{recipient_name:t('cert.sample.n'),channel_name:t('cert.sample.c'),award:'Welcome to Tamil MC Community',message:t('cert.sample.m'),cert_code:'CERT-XXXXXXXX',issued_at:new Date()},'emerald');

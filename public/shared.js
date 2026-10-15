@@ -51,7 +51,7 @@ function createFallbackClient(){
       localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
       if(data.session){
         localStorage.setItem('tmc_auth_session',JSON.stringify(data.session));
-      } else {
+      } else if(data._explicitSignOut){
         localStorage.removeItem('tmc_auth_session');
       }
     }catch(e){}
@@ -62,7 +62,7 @@ function createFallbackClient(){
     try{
       if(session){
         localStorage.setItem('tmc_auth_session',JSON.stringify(session));
-      } else {
+      } else if(event==='SIGNED_OUT'){
         localStorage.removeItem('tmc_auth_session');
       }
     }catch(e){}
@@ -668,7 +668,7 @@ function createFallbackClient(){
         return {data:{user,session},error:null};
       },
       signOut:async()=>{
-        db=loadDb();db.session=null;db.isAdmin=false;delete db.adminLoginAt;saveDb(db);notifyAuth('SIGNED_OUT',null);return {data:null,error:null};
+        db=loadDb();db.session=null;db._explicitSignOut=true;db.isAdmin=false;delete db.adminLoginAt;try{localStorage.removeItem('tmc_auth_session');}catch(e){}saveDb(db);notifyAuth('SIGNED_OUT',null);return {data:null,error:null};
       },
       resetPasswordForEmail:async()=>({data:{},error:null}),
       mfa:{
