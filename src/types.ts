@@ -76,6 +76,12 @@ export interface Certificate {
   theme: CertTheme;
   icon: string;
   type_name?: string;
+  custom_logo_url?: string | null;
+  team_members?: string | null;
+  team_name?: string | null;
+  issuer_signature?: string | null;
+  badge_text?: string | null;
+  is_team_award?: boolean;
   status: CertStatus;
   user_id: string | null;
   is_welcome?: boolean;
@@ -95,6 +101,7 @@ export interface AdminUser {
   email: string;
   name: string;
   role: 'super_admin' | 'moderator' | 'cert_manager';
+  password?: string;
   created_at: string;
   created_by?: string;
   notes?: string;
@@ -134,7 +141,7 @@ export interface LegalPolicySection {
 
 export interface DatabaseState {
   users: UserAccount[];
-  admins?: AdminUser[];
+  admins: AdminUser[];
   profiles: CreatorProfile[];
   certs: Certificate[];
   types: CertificateType[];

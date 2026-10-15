@@ -28,7 +28,7 @@
     },
     "Certificate": {
       "title": "Certificate",
-      "description": "Award and membership certificates",
+      "description": "Award, team awards, and membership certificates",
       "type": "object",
       "properties": {
         "cert_code": { "type": "string", "maxLength": 60 },
@@ -45,6 +45,12 @@
         "theme": { "type": "string", "maxLength": 30 },
         "icon": { "type": "string", "maxLength": 30 },
         "type_name": { "type": "string", "maxLength": 50 },
+        "custom_logo_url": { "type": "string", "maxLength": 500000 },
+        "team_members": { "type": "string", "maxLength": 500 },
+        "team_name": { "type": "string", "maxLength": 100 },
+        "issuer_signature": { "type": "string", "maxLength": 100 },
+        "badge_text": { "type": "string", "maxLength": 80 },
+        "is_team_award": { "type": "boolean" },
         "status": { "type": "string", "enum": ["unused", "redeemed", "revoked"] },
         "user_id": { "type": "string", "maxLength": 128 },
         "is_welcome": { "type": "boolean" },
@@ -62,6 +68,22 @@
         "updated_at": { "type": "string" }
       },
       "required": ["voter_id", "creator_id"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized administrator user profile",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 100 },
+        "name": { "type": "string", "maxLength": 80 },
+        "role": { "type": "string", "maxLength": 30 },
+        "notes": { "type": "string", "maxLength": 200 },
+        "password_hash": { "type": "string", "maxLength": 128 },
+        "created_by": { "type": "string", "maxLength": 100 },
+        "created_at": { "type": "string" },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["email", "name", "role"]
     }
   },
   "firestore": {
@@ -76,6 +98,10 @@
     "/votes/{voteId}": {
       "schema": "Vote",
       "description": "1 person 1 vote entries"
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminUser",
+      "description": "Administrator profiles"
     }
   }
 }

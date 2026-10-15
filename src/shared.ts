@@ -24,6 +24,7 @@ export const INITIAL_SEED_ADMINS: AdminUser[] = [
     email: 'santhoshkumarshasc@gmail.com',
     name: 'Santhosh (Lead Admin)',
     role: 'super_admin',
+    password: 'ADMINOFTMC',
     created_at: '2026-09-01T00:00:00.000Z',
     created_by: 'system',
     notes: 'Primary Community Administrator',
@@ -34,9 +35,21 @@ export const INITIAL_SEED_ADMINS: AdminUser[] = [
     email: 'admin@tmcawards.org',
     name: 'TMC Awards Operations',
     role: 'super_admin',
+    password: 'ADMINOFTMC',
     created_at: '2026-09-01T00:00:00.000Z',
     created_by: 'system',
     notes: 'Main Community Operations Account',
+    is_active: true
+  },
+  {
+    id: 'admin-lead-3',
+    email: 'ogisbacktamil@gmail.com',
+    name: 'TMC Admin (Owner)',
+    role: 'super_admin',
+    password: 'ADMINOFTMC',
+    created_at: '2026-09-01T00:00:00.000Z',
+    created_by: 'system',
+    notes: 'Owner Administrator Account',
     is_active: true
   }
 ];
@@ -686,7 +699,8 @@ export function createFallbackClient() {
         }
 
         if (!db.admins || db.admins.length === 0) db.admins = JSON.parse(JSON.stringify(INITIAL_SEED_ADMINS));
-        if (db.admins.some(a => a.email.toLowerCase() === email)) {
+        const adminList: AdminUser[] = db.admins;
+        if (adminList.some(a => a.email.toLowerCase() === email)) {
           return { data: null, error: { message: 'An administrator with this email already exists' } };
         }
 
@@ -696,12 +710,14 @@ export function createFallbackClient() {
           name,
           role,
           notes,
+          password: (params.password || 'ADMINOFTMC').trim(),
           created_at: new Date().toISOString(),
           created_by: db.session?.user?.email || 'Lead Administrator',
           is_active: true
         };
 
-        db.admins.unshift(newAdmin);
+        adminList.unshift(newAdmin);
+        db.admins = adminList;
         saveDb(db);
         return { data: newAdmin, error: null };
       }
@@ -710,7 +726,8 @@ export function createFallbackClient() {
         if (!isAdmin) return { data: null, error: { message: 'Unauthorized' } };
         const targetId = params.p_id;
         if (!db.admins || db.admins.length === 0) db.admins = JSON.parse(JSON.stringify(INITIAL_SEED_ADMINS));
-        const target = db.admins.find(a => a.id === targetId || a.email === targetId);
+        const adminList: AdminUser[] = db.admins;
+        const target = adminList.find(a => a.id === targetId || a.email === targetId);
         if (!target) return { data: null, error: { message: 'Administrator not found' } };
 
         const curEmail = db.session?.user?.email?.toLowerCase();
@@ -718,9 +735,50 @@ export function createFallbackClient() {
           return { data: null, error: { message: 'Cannot remove your own active administrator account' } };
         }
 
-        db.admins = db.admins.filter(a => a.id !== target.id);
+        db.admins = adminList.filter(a => a.id !== target.id);
         saveDb(db);
         return { data: { success: true }, error: null };
+      }
+
+      // ==========================================
+      // BACKUP & RESTORE RPCs (Data Persistence Guarantee)
+      // ==========================================
+      if (fn === 'admin_export_backup') {
+        if (!isAdmin) return { data: null, error: { message: 'Unauthorized' } };
+        const payload = {
+          version: '1.0',
+          exported_at: new Date().toISOString(),
+          profiles: db.profiles,
+          certs: db.certs,
+          types: db.types,
+          admins: db.admins,
+          users: db.users,
+          votes: db.votes,
+          likes: db.likes,
+          serverIcon: db.serverIcon
+        };
+        return { data: payload, error: null };
+      }
+
+      if (fn === 'admin_import_backup') {
+        if (!isAdmin) return { data: null, error: { message: 'Unauthorized' } };
+        try {
+          const raw = params.data;
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (!parsed) throw new Error('Empty or invalid backup payload');
+          if (Array.isArray(parsed.profiles)) db.profiles = parsed.profiles;
+          if (Array.isArray(parsed.certs)) db.certs = parsed.certs;
+          if (Array.isArray(parsed.types)) db.types = parsed.types;
+          if (Array.isArray(parsed.admins) && parsed.admins.length) db.admins = parsed.admins;
+          if (Array.isArray(parsed.users)) db.users = parsed.users;
+          if (parsed.votes) db.votes = parsed.votes;
+          if (parsed.likes) db.likes = parsed.likes;
+          if (parsed.serverIcon !== undefined) db.serverIcon = parsed.serverIcon;
+          saveDb(db);
+          return { data: { success: true, count: db.profiles.length, certs: db.certs.length }, error: null };
+        } catch (e: any) {
+          return { data: null, error: { message: e.message || 'Import failed' } };
+        }
       }
 
       // ==========================================
@@ -754,7 +812,7 @@ export function createFallbackClient() {
         return { data: result, error: null };
       }
 
-      // Admin Certificate Creation
+      // Admin Certificate Creation (with optional Team and Custom Design fields)
       if (fn === 'admin_create_certificate') {
         if (!isAdmin) return { data: null, error: { message: 'unauthorized' } };
         const rnd = () => Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -769,14 +827,20 @@ export function createFallbackClient() {
           channel_name: params.p_channel,
           award: params.p_award,
           award_ta: params.p_award_ta || '',
-          heading: ty ? ty.heading : 'Certificate of Achievement',
-          heading_ta: ty ? ty.heading_ta : 'சாதனைச் சான்றிதழ்',
+          heading: params.p_heading || (ty ? ty.heading : 'Certificate of Achievement'),
+          heading_ta: params.p_heading_ta || (ty ? ty.heading_ta : 'சாதனைச் சான்றிதழ்'),
           content_title: params.p_content_title || '',
           content_url: params.p_content_url || '',
           message: params.p_message || '',
           theme: (params.p_theme as CertTheme) || 'emerald',
-          icon: ty ? ty.icon : 'star',
-          type_name: ty ? ty.name : '',
+          icon: params.p_icon || (ty ? ty.icon : 'star'),
+          type_name: ty ? ty.name : 'Custom Award',
+          custom_logo_url: params.p_custom_logo_url || null,
+          team_members: params.p_team_members || null,
+          team_name: params.p_team_name || null,
+          issuer_signature: params.p_issuer_signature || null,
+          badge_text: params.p_badge_text || null,
+          is_team_award: !!params.p_is_team_award,
           status: 'unused',
           user_id: null,
           issued_at: new Date().toISOString()
@@ -916,22 +980,52 @@ export function createFallbackClient() {
       },
       signInWithPassword: async ({ email, password }: { email: string; password?: string }) => {
         db = loadDb();
-        const secretCandidate = (password || '').trim() || (email || '').trim();
-        if (secretCandidate === 'ADMINOFTMC') {
-          const user: UserAccount = {
-            id: 'admin-tmc',
-            email: 'admin@tmcawards.org',
-            is_admin: true,
-            name: 'TMC Administrator',
-            created_at: new Date().toISOString()
-          };
-          const session: AuthSession = { user, access_token: 'admin-secret-token-tmc' };
-          db.isAdmin = true;
-          db.adminLoginAt = Date.now();
-          db.session = session;
-          saveDb(db);
-          notifyAuth('SIGNED_IN', session);
-          return { data: { user, session }, error: null };
+        const em = (email || '').trim().toLowerCase();
+        const pw = (password || '').trim();
+
+        // 1. Check registered administrators
+        if (!db.admins || db.admins.length === 0) db.admins = JSON.parse(JSON.stringify(INITIAL_SEED_ADMINS));
+        const adminMatch = db.admins.find(a => a.email.toLowerCase() === em && a.is_active);
+        if (adminMatch) {
+          const expectedPw = adminMatch.password || 'ADMINOFTMC';
+          if (pw === expectedPw || pw === 'ADMINOFTMC') {
+            const user: UserAccount = {
+              id: adminMatch.id,
+              email: adminMatch.email,
+              is_admin: true,
+              name: adminMatch.name,
+              created_at: adminMatch.created_at
+            };
+            const session: AuthSession = { user, access_token: 'admin-sess-' + Date.now() };
+            db.isAdmin = true;
+            db.adminLoginAt = Date.now();
+            db.session = session;
+            saveDb(db);
+            notifyAuth('SIGNED_IN', session);
+            return { data: { user, session }, error: null };
+          } else {
+            return { data: null, error: { message: 'Invalid administrator password.' } };
+          }
+        }
+
+        // 2. Default administrator accounts
+        if (em === 'admin@tmcawards.org' || em === 'santhoshkumarshasc@gmail.com' || em === 'ogisbacktamil@gmail.com') {
+          if (pw === 'ADMINOFTMC') {
+            const user: UserAccount = {
+              id: 'admin-' + em.split('@')[0],
+              email: em,
+              is_admin: true,
+              name: 'TMC Administrator',
+              created_at: new Date().toISOString()
+            };
+            const session: AuthSession = { user, access_token: 'admin-sess-' + Date.now() };
+            db.isAdmin = true;
+            db.adminLoginAt = Date.now();
+            db.session = session;
+            saveDb(db);
+            notifyAuth('SIGNED_IN', session);
+            return { data: { user, session }, error: null };
+          }
         }
 
         let user = db.users.find(u => u.email === email);
@@ -1136,6 +1230,37 @@ export async function drawCert(canvas: HTMLCanvasElement | null, c: Certificate,
   } while (ctx.measureText(aw).width > W - 300 && as > 30);
   ctx.fillText(aw, W / 2, 745);
 
+  // Optional Custom Logo Rendering
+  if (c.custom_logo_url) {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+        img.src = c.custom_logo_url!;
+      });
+      if (img.width > 0) {
+        ctx.save();
+        ctx.fillStyle = th.accent;
+        ctx.fillRect(115, 80, 110, 110);
+        ctx.fillStyle = th.bg;
+        ctx.fillRect(119, 84, 102, 102);
+        ctx.drawImage(img, 120, 85, 100, 100);
+        ctx.restore();
+      }
+    } catch (e) {}
+  }
+
+  // Optional Team Award Banner
+  if (c.is_team_award) {
+    ctx.fillStyle = th.accent;
+    ctx.fillRect(W / 2 - 200, 195, 400, 36);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '800 18px Outfit, sans-serif';
+    ctx.fillText('★ OFFICIAL TEAM AWARD ★', W / 2, 219);
+  }
+
   let y = 800;
   ctx.fillStyle = th.sub;
   ctx.font = '500 26px Outfit, "Noto Sans Tamil", sans-serif';
@@ -1143,8 +1268,22 @@ export async function drawCert(canvas: HTMLCanvasElement | null, c: Certificate,
     wrap(ctx, ((window as any).t?.('cert.content') || 'Content:') + ' ' + c.content_title, W / 2, y, W - 460, 40);
     y += 44;
   }
+  if (c.team_name) {
+    ctx.fillStyle = th.frame;
+    ctx.font = '700 26px Outfit, "Noto Sans Tamil", sans-serif';
+    ctx.fillText('Team: ' + c.team_name, W / 2, y);
+    y += 38;
+  }
+  if (c.team_members) {
+    ctx.fillStyle = th.ink;
+    ctx.font = '600 24px Outfit, "Noto Sans Tamil", sans-serif';
+    wrap(ctx, '👥 Team Members: ' + c.team_members, W / 2, y, W - 460, 34);
+    y += 44;
+  }
   if (c.message) {
-    wrap(ctx, c.message, W / 2, y, W - 460, 40);
+    ctx.fillStyle = th.sub;
+    ctx.font = '500 24px Outfit, "Noto Sans Tamil", sans-serif';
+    wrap(ctx, c.message, W / 2, y, W - 460, 36);
   }
 
   const sp = SPRITES[c.icon] || SPRITES.shield;
@@ -1164,6 +1303,12 @@ export async function drawCert(canvas: HTMLCanvasElement | null, c: Certificate,
     ctx.fillRect(ox + 9 * px + 50 + i * 34, oy + 30, 20, 20);
   }
 
+  if (c.badge_text) {
+    ctx.fillStyle = th.frame;
+    ctx.font = '700 18px Outfit, sans-serif';
+    ctx.fillText(c.badge_text, W / 2, oy + 80);
+  }
+
   ctx.textAlign = 'left';
   ctx.fillStyle = th.sub;
   ctx.font = '500 24px Outfit, "Noto Sans Tamil", sans-serif';
@@ -1179,7 +1324,7 @@ export async function drawCert(canvas: HTMLCanvasElement | null, c: Certificate,
   ctx.stroke();
 
   ctx.font = '500 24px Outfit, "Noto Sans Tamil", sans-serif';
-  ctx.fillText((window as any).t?.('cert.signed') || 'TMC Awards Committee', W - 315, 1056);
+  ctx.fillText(c.issuer_signature || (window as any).t?.('cert.signed') || 'TMC Awards Committee', W - 315, 1056);
 }
 
 export function downloadCanvas(canvas: HTMLCanvasElement, name: string): void {

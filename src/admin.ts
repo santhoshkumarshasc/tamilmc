@@ -338,6 +338,57 @@ function renderTypesTab(): void {
   `).join('');
 }
 
+/* TAB RENDERING: ADMINISTRATORS */
+function renderAdminsTab(): void {
+  const tb = $('admTableBody');
+  if (tb) {
+    tb.innerHTML = admins.length ? admins.map(a => `
+      <tr>
+        <td><b>${esc(a.name)}</b></td>
+        <td><code>${esc(a.email)}</code></td>
+        <td><span class="tag-pill">${esc(a.role)}</span></td>
+        <td><small style="color:var(--muted)">${esc(a.created_at?.slice(0, 10))}</small></td>
+        <td>
+          <button class="btn small danger" onclick="window.deleteAdmin('${esc(a.id)}')">Delete</button>
+        </td>
+      </tr>
+    `).join('') : '<tr><td colspan="5" class="empty">No administrators configured.</td></tr>';
+  }
+
+  const createBtn = $('admCreateBtn') as HTMLButtonElement | null;
+  if (createBtn) {
+    createBtn.onclick = async () => {
+      const name = ($('admNewName') as HTMLInputElement)?.value.trim();
+      const email = ($('admNewEmail') as HTMLInputElement)?.value.trim();
+      const role = ($('admNewRole') as HTMLSelectElement)?.value || 'moderator';
+      const notes = ($('admNewNotes') as HTMLInputElement)?.value.trim();
+      const msgEl = $('admOutMsg');
+
+      if (!name || name.length < 2 || !email || !email.includes('@')) {
+        if (msgEl) (window as any).setMsg?.(msgEl, 'Valid name and email are required.', 'err');
+        return;
+      }
+
+      createBtn.disabled = true;
+      const { error } = await (window as any).sb.rpc('admin_create_admin', { name, email, role, notes });
+      createBtn.disabled = false;
+
+      if (error) {
+        if (msgEl) (window as any).setMsg?.(msgEl, error.message || 'Failed to create admin.', 'err');
+      } else {
+        if (msgEl) (window as any).setMsg?.(msgEl, 'Administrator added successfully!', 'ok');
+        const inpName = $('admNewName') as HTMLInputElement;
+        const inpEmail = $('admNewEmail') as HTMLInputElement;
+        const inpNotes = $('admNewNotes') as HTMLInputElement;
+        if (inpName) inpName.value = '';
+        if (inpEmail) inpEmail.value = '';
+        if (inpNotes) inpNotes.value = '';
+        await loadAll();
+      }
+    };
+  }
+}
+
 // Global actions for inline button clicks
 declare global {
   interface Window {
@@ -348,6 +399,7 @@ declare global {
     deleteProfile: (id: string) => void;
     deleteUser: (id: string) => void;
     deleteType: (id: string) => void;
+    deleteAdmin: (id: string) => void;
   }
 }
 
@@ -398,6 +450,16 @@ window.deleteType = async (id: string) => {
   loadAll();
 };
 
+window.deleteAdmin = async (id: string) => {
+  if (!confirm('Permanently delete this administrator account?')) return;
+  const { error } = await (window as any).sb.rpc('admin_delete_admin', { p_id: id });
+  if (error) {
+    alert(error.message || 'Failed to delete administrator');
+  } else {
+    loadAll();
+  }
+};
+
 // Tabs navigation
 function setupTabs(): void {
   document.querySelectorAll<HTMLButtonElement>('.tabs .chip').forEach(btn => {
@@ -406,7 +468,7 @@ function setupTabs(): void {
       document.querySelectorAll<HTMLButtonElement>('.tabs .chip').forEach(b => b.setAttribute('aria-pressed', 'false'));
       btn.setAttribute('aria-pressed', 'true');
 
-      ['certs', 'creators', 'users', 'types', 'settings'].forEach(tKey => {
+      ['certs', 'creators', 'users', 'types', 'admins', 'settings'].forEach(tKey => {
         const pane = $(`tab-${tKey}`);
         if (pane) pane.classList.toggle('hide', tKey !== tab);
       });

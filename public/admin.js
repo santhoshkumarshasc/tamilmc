@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-let factorId=null,profiles=[],certs=[],types=[],users=[],editingType=null,editing=null,current=null;
+let factorId=null,profiles=[],certs=[],types=[],users=[],admins=[],editingType=null,editing=null,current=null;
 let adminTimer=null,adminExpiresAt=null;
 const ADMIN_TIMEOUT_MS=5*60*1000; // 5 minutes strict session timeout
 
@@ -121,18 +121,21 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
   $('tab-creators').classList.toggle('hide',t!=='creators');
   $('tab-users').classList.toggle('hide',t!=='users');
   $('tab-types').classList.toggle('hide',t!=='types');
+  if($('tab-admins')) $('tab-admins').classList.toggle('hide',t!=='admins');
   $('tab-settings').classList.toggle('hide',t!=='settings');
 });
 
 async function refresh(){
-  const [p,c,ty,u]=await Promise.all([
+  const [p,c,ty,u,adm]=await Promise.all([
     sb.rpc('admin_list_profiles'),
     sb.rpc('admin_list_certificates'),
     sb.rpc('admin_list_types'),
-    sb.rpc('admin_list_users')
+    sb.rpc('admin_list_users'),
+    sb.rpc('admin_list_admins')
   ]);
   profiles=p.data||[];certs=c.data||[];types=ty.data||[];users=u.data||[];
-  renderProfiles();renderCerts();renderTypes();renderUsers();
+  admins=(adm&&adm.data)||[];
+  renderProfiles();renderCerts();renderTypes();renderUsers();renderAdmins();
   const keep=$('cType').value;typeOptions(keep);
   if(!keep&&types.some(x=>x.is_active)&&!$('cAward').value){$('cType').value=types.find(x=>x.is_active).id;applyType()}
   $('cPick').innerHTML=`<option value="">${esc(t('ad.manual'))}</option>`+profiles.map(x=>`<option value="${esc(x.id)}">${esc(x.channel_name)} (@${esc(x.handle)})</option>`).join('');
@@ -230,6 +233,54 @@ function renderUsers(){
     await sb.rpc('admin_delete_user',{p_id:b.dataset.delU});
     refresh();
   });
+}
+
+/* ---------- administrators ---------- */
+function renderAdmins(){
+  const tb = $('admTableBody');
+  if(!tb) return;
+  tb.innerHTML = admins.length ? admins.map(a => `<tr>
+    <td><b>${esc(a.name)}</b></td>
+    <td><code>${esc(a.email)}</code></td>
+    <td><span class="tag-pill">${esc(a.role)}</span></td>
+    <td><small style="color:var(--muted)">${esc((a.created_at||'').slice(0,10))}</small></td>
+    <td><button class="btn small danger" data-del-adm="${esc(a.id)}">Delete</button></td>
+  </tr>`).join('') : '<tr><td colspan="5" class="empty">No administrators configured.</td></tr>';
+
+  tb.querySelectorAll('[data-del-adm]').forEach(b => b.onclick = async () => {
+    if(!confirm('Permanently delete this administrator account?')) return;
+    const { error } = await sb.rpc('admin_delete_admin', { p_id: b.dataset.delAdm });
+    if(error) alert(error.message || 'Failed to delete administrator');
+    else refresh();
+  });
+}
+
+if($('admCreateBtn')) {
+  $('admCreateBtn').onclick = async () => {
+    const name = ($('admNewName') && $('admNewName').value.trim()) || '';
+    const email = ($('admNewEmail') && $('admNewEmail').value.trim()) || '';
+    const role = ($('admNewRole') && $('admNewRole').value) || 'moderator';
+    const notes = ($('admNewNotes') && $('admNewNotes').value.trim()) || '';
+    const msgEl = $('admOutMsg');
+
+    if(!name || name.length < 2 || !email || !email.includes('@')) {
+      return setMsg(msgEl, 'Valid name and email are required.', 'err');
+    }
+
+    $('admCreateBtn').disabled = true;
+    const { error } = await sb.rpc('admin_create_admin', { name, email, role, notes });
+    $('admCreateBtn').disabled = false;
+
+    if(error) {
+      setMsg(msgEl, error.message || 'Failed to create administrator.', 'err');
+    } else {
+      setMsg(msgEl, 'Administrator added successfully!', 'ok');
+      if($('admNewName')) $('admNewName').value = '';
+      if($('admNewEmail')) $('admNewEmail').value = '';
+      if($('admNewNotes')) $('admNewNotes').value = '';
+      refresh();
+    }
+  };
 }
 
 /* ---------- server icon settings ---------- */

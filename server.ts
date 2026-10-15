@@ -56,7 +56,7 @@ const NOT_FOUND_PAGE = `<!DOCTYPE html>
 // Admin route guard: if user types /admin, /admin/, or /admin.html without ?token=ADMINOFTMC, respond with 404 error
 app.get(['/admin', '/admin/', '/admin.html'], (req: Request, res: Response): void => {
   if (req.query.token !== 'ADMINOFTMC') {
-    res.status(404).send(notFoundHtml);
+    res.status(404).send(NOT_FOUND_PAGE);
     return;
   }
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));

@@ -25,7 +25,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (request.auth.token.email == 'santhoshkumarshasc@gmail.com' && request.auth.token.email_verified == true)
+        (request.auth.token.email in ['santhoshkumarshasc@gmail.com', 'ogisbacktamil@gmail.com'] && request.auth.token.email_verified == true)
       );
     }
 
@@ -93,6 +93,12 @@ service cloud.firestore {
     match /admins/{adminId} {
       allow read: if isAdmin();
       allow create, update, delete: if isAdmin();
+    }
+
+    // System sync & backup
+    match /system/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

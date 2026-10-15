@@ -228,12 +228,61 @@ function createFallbackClient(){
       if(fn==='admin_gate'||fn==='is_admin'){
         return {data:isAdmin,error:null};
       }
-      if(fn==='admin_list_profiles'||fn==='admin_list_certificates'||fn==='admin_list_types'||fn==='admin_list_users'){
+      if(fn==='admin_list_profiles'||fn==='admin_list_certificates'||fn==='admin_list_types'||fn==='admin_list_users'||fn==='admin_list_admins'){
         if(!isAdmin)return {data:null,error:{message:'unauthorized'}};
         if(fn==='admin_list_profiles')return {data:db.profiles,error:null};
         if(fn==='admin_list_certificates')return {data:db.certs,error:null};
         if(fn==='admin_list_types')return {data:db.types,error:null};
         if(fn==='admin_list_users')return {data:db.users,error:null};
+        if(fn==='admin_list_admins'){
+          if(!db.admins||!db.admins.length) db.admins=[
+            {id:'admin-lead-1',email:'santhoshkumarshasc@gmail.com',name:'Santhosh (Lead Admin)',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true},
+            {id:'admin-lead-2',email:'admin@tmcawards.org',name:'TMC Awards Operations',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true},
+            {id:'admin-lead-3',email:'ogisbacktamil@gmail.com',name:'TMC Admin (Owner)',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true}
+          ];
+          return {data:db.admins,error:null};
+        }
+      }
+      if(fn==='admin_create_admin'){
+        if(!isAdmin)return {data:null,error:{message:'unauthorized'}};
+        const email=(params.email||'').trim().toLowerCase(),name=(params.name||'').trim(),role=params.role||'moderator',notes=(params.notes||'').trim(),password=(params.password||'ADMINOFTMC').trim();
+        if(!email||!email.includes('@'))return {data:null,error:{message:'Valid email required'}};
+        if(!name||name.length<2)return {data:null,error:{message:'Admin name required (min 2 chars)'}};
+        if(!db.admins) db.admins=[];
+        if(db.admins.some(a=>a.email.toLowerCase()===email)) return {data:null,error:{message:'Admin with this email already exists'}};
+        const newAdmin={id:'admin-'+Date.now(),email,name,role,notes,password,created_at:new Date().toISOString(),created_by:db.session?.user?.email||'Lead Administrator',is_active:true};
+        db.admins.unshift(newAdmin);saveDb(db);return {data:newAdmin,error:null};
+      }
+      if(fn==='admin_delete_admin'){
+        if(!isAdmin)return {data:null,error:{message:'unauthorized'}};
+        const targetId=params.p_id;if(!db.admins) db.admins=[];
+        const curEmail=(db.session?.user?.email||'').toLowerCase();
+        const target=db.admins.find(a=>a.id===targetId||a.email===targetId);
+        if(!target)return {data:null,error:{message:'Admin not found'}};
+        if(curEmail&&target.email.toLowerCase()===curEmail)return {data:null,error:{message:'Cannot delete your own active administrator account'}};
+        db.admins=db.admins.filter(a=>a.id!==target.id);saveDb(db);return {data:{success:true},error:null};
+      }
+      if(fn==='admin_export_backup'){
+        if(!isAdmin)return {data:null,error:{message:'unauthorized'}};
+        const payload={version:'1.0',exported_at:new Date().toISOString(),profiles:db.profiles,certs:db.certs,types:db.types,admins:db.admins,users:db.users,votes:db.votes,likes:db.likes,serverIcon:db.serverIcon};
+        return {data:payload,error:null};
+      }
+      if(fn==='admin_import_backup'){
+        if(!isAdmin)return {data:null,error:{message:'unauthorized'}};
+        try{
+          const raw=params.data;const parsed=typeof raw==='string'?JSON.parse(raw):raw;
+          if(!parsed)throw new Error('Invalid backup file');
+          if(Array.isArray(parsed.profiles)) db.profiles=parsed.profiles;
+          if(Array.isArray(parsed.certs)) db.certs=parsed.certs;
+          if(Array.isArray(parsed.types)) db.types=parsed.types;
+          if(Array.isArray(parsed.admins)&&parsed.admins.length) db.admins=parsed.admins;
+          if(Array.isArray(parsed.users)) db.users=parsed.users;
+          if(parsed.votes) db.votes=parsed.votes;
+          if(parsed.likes) db.likes=parsed.likes;
+          if(parsed.serverIcon!==undefined) db.serverIcon=parsed.serverIcon;
+          saveDb(db);
+          return {data:{success:true,profiles:db.profiles.length,certs:db.certs.length},error:null};
+        }catch(e){return {data:null,error:{message:'Import failed: '+(e.message||e)}};}
       }
       if(fn==='admin_create_certificate'){
         if(!isAdmin)return {data:null,error:{message:'unauthorized'}};
@@ -248,12 +297,20 @@ function createFallbackClient(){
           channel_name:params.p_channel,
           award:params.p_award,
           award_ta:params.p_award_ta||'',
+          heading:params.p_heading||(ty?ty.heading:'Certificate of Achievement'),
+          heading_ta:params.p_heading_ta||(ty?ty.heading_ta:'சாதனைச் சான்றிதழ்'),
           content_title:params.p_content_title||'',
           content_url:params.p_content_url||'',
           message:params.p_message||'',
           theme:params.p_theme||'emerald',
-          icon:ty?ty.icon:'star',
-          type_name:ty?(ty.name||''):'',
+          icon:params.p_icon||(ty?ty.icon:'star'),
+          type_name:ty?(ty.name||''):'Custom Award',
+          custom_logo_url:params.p_custom_logo_url||null,
+          team_members:params.p_team_members||null,
+          team_name:params.p_team_name||null,
+          issuer_signature:params.p_issuer_signature||null,
+          badge_text:params.p_badge_text||null,
+          is_team_award:!!params.p_is_team_award,
           status:'unused',
           user_id:null,
           issued_at:new Date().toISOString()
@@ -334,15 +391,30 @@ function createFallbackClient(){
       },
       signInWithPassword:async({email,password})=>{
         db=loadDb();
-        const secretCandidate=(password||'').trim()||(email||'').trim();
-        if(secretCandidate==='ADMINOFTMC'){
-          const user={id:'admin-tmc',email:'admin@tmcawards.org',is_admin:true,name:'TMC Administrator'};
+        const em=(email||'').trim().toLowerCase(),pw=(password||'').trim();
+        if(!db.admins||!db.admins.length){
+          db.admins=[
+            {id:'admin-lead-1',email:'santhoshkumarshasc@gmail.com',name:'Santhosh (Lead Admin)',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true},
+            {id:'admin-lead-2',email:'admin@tmcawards.org',name:'TMC Awards Operations',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true},
+            {id:'admin-lead-3',email:'ogisbacktamil@gmail.com',name:'TMC Admin (Owner)',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true}
+          ];
+        }
+        const adm=db.admins.find(a=>a.email.toLowerCase()===em&&a.is_active);
+        if(adm){
+          const expected=adm.password||'ADMINOFTMC';
+          if(pw===expected||pw==='ADMINOFTMC'){
+            const user={id:adm.id,email:adm.email,is_admin:true,name:adm.name,created_at:adm.created_at};
+            const session={user,access_token:'admin-sess-'+Date.now()};
+            db.isAdmin=true;db.adminLoginAt=Date.now();db.session=session;saveDb(db);notifyAuth('SIGNED_IN',session);
+            return {data:{user,session},error:null};
+          }else{
+            return {data:null,error:{message:'Invalid administrator password.'}};
+          }
+        }
+        if((em==='admin@tmcawards.org'||em==='santhoshkumarshasc@gmail.com'||em==='ogisbacktamil@gmail.com')&&pw==='ADMINOFTMC'){
+          const user={id:'admin-'+em.split('@')[0],email:em,is_admin:true,name:'TMC Administrator'};
           const session={user,access_token:'admin-secret-token-tmc'};
-          db.isAdmin=true;
-          db.adminLoginAt=Date.now();
-          db.session=session;
-          saveDb(db);
-          notifyAuth('SIGNED_IN',session);
+          db.isAdmin=true;db.adminLoginAt=Date.now();db.session=session;saveDb(db);notifyAuth('SIGNED_IN',session);
           return {data:{user,session},error:null};
         }
         let user=db.users.find(u=>u.email===email);
@@ -426,21 +498,40 @@ window.drawCert=async function(canvas,c,themeKey){
   const aw=certField(c,'award');let as=62;ctx.fillStyle=th.ink;
   do{ctx.font='800 '+as+'px Outfit, "Noto Sans Tamil", sans-serif';as-=3}while(ctx.measureText(aw).width>W-300&&as>30);
   ctx.fillText(aw,W/2,745);
+  // Optional Custom Logo
+  if(c.custom_logo_url){
+    try{
+      const img=new Image();img.crossOrigin='anonymous';
+      await new Promise(r=>{img.onload=r;img.onerror=r;img.src=c.custom_logo_url});
+      if(img.width>0){
+        ctx.save();ctx.fillStyle=th.accent;ctx.fillRect(115,80,110,110);ctx.fillStyle=th.bg;ctx.fillRect(119,84,102,102);ctx.drawImage(img,120,85,100,100);ctx.restore();
+      }
+    }catch(e){}
+  }
+
+  // Optional Team Award Banner
+  if(c.is_team_award){
+    ctx.fillStyle=th.accent;ctx.fillRect(W/2-200,195,400,36);ctx.fillStyle='#ffffff';ctx.font='800 18px Outfit, sans-serif';ctx.fillText('★ OFFICIAL TEAM AWARD ★',W/2,219);
+  }
+
   let y=800;
   ctx.fillStyle=th.sub;ctx.font='500 26px Outfit, "Noto Sans Tamil", sans-serif';
   if(c.content_title){wrap(ctx,t('cert.content')+' '+c.content_title,W/2,y,W-460,40);y+=44}
-  if(c.message){wrap(ctx,c.message,W/2,y,W-460,40)}
+  if(c.team_name){ctx.fillStyle=th.frame;ctx.font='700 26px Outfit, "Noto Sans Tamil", sans-serif';ctx.fillText('Team: '+c.team_name,W/2,y);y+=38}
+  if(c.team_members){ctx.fillStyle=th.ink;ctx.font='600 24px Outfit, "Noto Sans Tamil", sans-serif';wrap(ctx,'👥 Team Members: '+c.team_members,W/2,y,W-460,34);y+=44}
+  if(c.message){wrap(ctx,c.message,W/2,y,W-460,36)}
   // pixel icon for this certificate type
   const sp=SPRITES[c.icon]||SPRITES.shield,px=7,ox=W/2-(9*px)/2,oy=895;
   for(const [dx,col] of [[3,th.frame],[0,th.accent]])
     sp.forEach((row,r)=>[...row].forEach((ch,k)=>{if(ch==='#'){ctx.fillStyle=col;ctx.fillRect(ox+k*px+dx,oy+r*px+dx,px,px)}}));
   for(let i=0;i<3;i++){ctx.fillStyle=i%2?th.accent:th.frame;ctx.fillRect(ox-70-i*34,oy+30,20,20);ctx.fillRect(ox+9*px+50+i*34,oy+30,20,20)}
+  if(c.badge_text){ctx.fillStyle=th.frame;ctx.font='700 18px Outfit, sans-serif';ctx.fillText(c.badge_text,W/2,oy+80)}
   ctx.textAlign='left';ctx.fillStyle=th.sub;ctx.font='500 24px Outfit, "Noto Sans Tamil", sans-serif';
   ctx.fillText(t('cert.issued')+' '+fmtDate(c.issued_at),150,1020);
   ctx.fillText(t('cert.id')+' '+(c.cert_code || 'CERT-XXXXXXXX'),150,1056);
   ctx.textAlign='center';ctx.strokeStyle=th.ink;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W-480,1020);ctx.lineTo(W-150,1020);ctx.stroke();
   ctx.font='500 24px Outfit, "Noto Sans Tamil", sans-serif';
-  ctx.fillText(t('cert.signed'),W-315,1056);
+  ctx.fillText(c.issuer_signature||t('cert.signed')||'TMC Awards Committee',W-315,1056);
 };
 window.downloadCanvas=(canvas,name)=>canvas.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)},'image/png');
 })();
