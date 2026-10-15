@@ -48,7 +48,25 @@ setInterval(() => {
 // Discord Bot & OAuth Configuration
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || 'MTU2MDE5OTcwNjQ3NzQ2NTY0MA.GL5c97.YntlvqhWjOjEQLZ04NdOVMZ5kMkQ_buUT1e5k8';
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '1560199706477465640';
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
 const DISCORD_BOT_INVITE = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot`;
+const VERCEL_DOMAIN = 'https://mccreatorstamil.vercel.app';
+
+function getDiscordRedirectUri(req: Request): string {
+  const custom = typeof req.query.redirect_uri === 'string' ? req.query.redirect_uri.trim() : '';
+  if (custom && (custom.startsWith('http://') || custom.startsWith('https://'))) {
+    return custom;
+  }
+  const referer = req.headers.referer || req.headers.origin;
+  if (referer && typeof referer === 'string' && referer.includes('mccreatorstamil.vercel.app')) {
+    return `${VERCEL_DOMAIN}/auth/discord/callback`;
+  }
+  const defaultBaseUrl = process.env.APP_URL
+    || (req.headers['x-forwarded-proto']
+        ? `${req.headers['x-forwarded-proto']}://${req.get('host')}`
+        : `${req.protocol}://${req.get('host')}`);
+  return `${defaultBaseUrl.replace(/\/+$/, '')}/auth/discord/callback`;
+}
 
 // Discord Bot Status & Info Endpoint
 app.get('/api/auth/discord/bot-info', async (_req: Request, res: Response): Promise<void> => {
@@ -77,8 +95,8 @@ app.get('/api/auth/discord/bot-info', async (_req: Request, res: Response): Prom
     success: true,
     bot: {
       id: DISCORD_CLIENT_ID,
-      username: 'Bot',
-      avatar: null,
+      username: 'TMC Official™',
+      avatar: 'https://cdn.discordapp.com/avatars/1560199706477465640/eac7715be2d9ed587f09bdc97349cba9.png',
       inviteUrl: DISCORD_BOT_INVITE
     }
   });
@@ -86,21 +104,83 @@ app.get('/api/auth/discord/bot-info', async (_req: Request, res: Response): Prom
 
 // Discord OAuth URL Endpoint (as specified in oauth-integration skill)
 app.get('/api/auth/discord/url', (req: Request, res: Response): void => {
-  const redirectUri = `${req.protocol}://${req.get('host')}/auth/discord/callback`;
+  const redirectUri = getDiscordRedirectUri(req);
+  const vercelRedirectUri = `${VERCEL_DOMAIN}/auth/discord/callback`;
   const state = Math.random().toString(36).substring(2);
-  const url = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20email&state=${state}`;
+
+  // 1. User Account OAuth URL
+  const userUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20email&state=${state}`;
+
+  // 2. Combined Bot Account OAuth URL (authorizes user account + adds bot account to server)
+  const botAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`;
+
+  // 3. Vercel-specific OAuth URLs for production deployment
+  const vercelUserUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(vercelRedirectUri)}&response_type=code&scope=identify%20email&state=${state}`;
+  const vercelBotAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=${encodeURIComponent(vercelRedirectUri)}&response_type=code&state=${state}`;
+
   res.json({
-    url,
+    url: userUrl,
+    botAuthUrl,
+    inviteUrl: DISCORD_BOT_INVITE,
+    vercelUserUrl,
+    vercelBotAuthUrl,
     configured: true,
     clientId: DISCORD_CLIENT_ID,
-    inviteUrl: DISCORD_BOT_INVITE,
-    redirectUri
+    botName: 'TMC Official™',
+    botId: DISCORD_CLIENT_ID,
+    redirectUri,
+    vercelRedirectUri
   });
 });
 
 // OAuth Callback Route (popup postMessage handler for iframe compliance)
-app.get(['/auth/discord/callback', '/auth/callback', '/auth/callback/'], (req: Request, res: Response): void => {
-  const code = req.query.code as string || '';
+app.get(['/auth/discord/callback', '/auth/callback', '/auth/callback/'], async (req: Request, res: Response): Promise<void> => {
+  const code = (req.query.code as string) || '';
+  let fetchedUser: any = null;
+
+  if (code && DISCORD_CLIENT_SECRET) {
+    try {
+      const redirectUri = getDiscordRedirectUri(req);
+      const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: DISCORD_CLIENT_ID,
+          client_secret: DISCORD_CLIENT_SECRET,
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri
+        })
+      });
+      if (tokenRes.ok) {
+        const tokenData: any = await tokenRes.json();
+        const userRes = await fetch('https://discord.com/api/v10/users/@me', {
+          headers: { Authorization: `${tokenData.token_type || 'Bearer'} ${tokenData.access_token}` }
+        });
+        if (userRes.ok) {
+          const dcUser: any = await userRes.json();
+          const avatarUrl = dcUser.avatar
+            ? `https://cdn.discordapp.com/avatars/${dcUser.id}/${dcUser.avatar}.png`
+            : `https://cdn.discordapp.com/embed/avatars/${(Number(dcUser.discriminator || '0')) % 5}.png`;
+          fetchedUser = {
+            id: dcUser.id,
+            discord_id: dcUser.id,
+            username: dcUser.username,
+            tag: dcUser.discriminator && dcUser.discriminator !== '0' ? `${dcUser.username}#${dcUser.discriminator}` : dcUser.username,
+            display_name: dcUser.global_name || dcUser.username,
+            discriminator: dcUser.discriminator || '0',
+            avatar_url: avatarUrl,
+            email: dcUser.email,
+            bio: 'Verified Discord User • TMC Community',
+            is_real_api_user: true
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('[Discord OAuth Token Exchange]:', err);
+    }
+  }
+
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(`<!DOCTYPE html>
 <html>
@@ -111,12 +191,17 @@ app.get(['/auth/discord/callback', '/auth/callback', '/auth/callback/'], (req: R
       <svg viewBox="0 0 24 24" width="30" height="30" fill="#ffffff"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
     </div>
     <h3 style="color:#ffffff;margin:0 0 8px;font-size:18px;">Discord Connected</h3>
-    <p style="font-size:14px;color:#b9bbbe;margin:0;">Account linked successfully. This popup will close automatically.</p>
+    <p style="font-size:14px;color:#b9bbbe;margin:0;">Account & Bot linked successfully. This popup will close automatically.</p>
   </div>
   <script>
     try {
       if (window.opener) {
-        window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', provider: 'discord', code: ${JSON.stringify(code)} }, '*');
+        window.opener.postMessage({
+          type: 'OAUTH_AUTH_SUCCESS',
+          provider: 'discord',
+          code: ${JSON.stringify(code)},
+          user: ${JSON.stringify(fetchedUser)}
+        }, '*');
         setTimeout(() => window.close(), 600);
       } else {
         window.location.href = '/';
@@ -247,14 +332,33 @@ app.post(['/api/auth/discord/send-code', '/api/auth/github/send-code'], async (r
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              content: `👋 Hello <@${explicitDiscordId}>! Your **TMC Awards** Account Creation Confirmation Code is:\n# \`${code}\`\n\nEnter this 6-digit code on the registration page to verify your Discord identity and complete your account creation.`,
+              content: `👋 Hello <@${explicitDiscordId}>! Your **TMC Awards** Account Creation Confirmation Code is:\n# \`${code}\`\n\nEnter this 6-digit code on the registration page or click the buttons below:`,
               embeds: [
                 {
                   title: '🏆 Tamil Minecraft Community Awards',
                   description: `**Account Creation Confirmation Code:**\n\`\`\`\n${code}\n\`\`\`\n_Valid for 15 minutes. Never share this code._`,
                   color: 5793266, // #5865F2 Blurple
-                  footer: { text: 'Discord Bot • TMC Awards' },
+                  footer: { text: 'TMC Official™ Bot • Tamil Minecraft Creators' },
                   timestamp: new Date().toISOString()
+                }
+              ],
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      style: 5,
+                      label: 'Open TMC Awards',
+                      url: 'https://mccreatorstamil.vercel.app/'
+                    },
+                    {
+                      type: 2,
+                      style: 5,
+                      label: 'Authorize Account (OAuth)',
+                      url: `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=https%3A%2F%2Fmccreatorstamil.vercel.app%2Fauth%2Fdiscord%2Fcallback&response_type=code`
+                    }
+                  ]
                 }
               ]
             })

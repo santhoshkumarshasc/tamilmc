@@ -517,19 +517,57 @@ function setupDiscordAuthControls(){
   if(btnVerify) btnVerify.onclick = () => connectDiscord();
   if(userIn) userIn.onkeydown = (e) => { if(e.key==='Enter'){ e.preventDefault(); connectDiscord(); } };
 
-  if(btnOAuth){
-    btnOAuth.onclick = async () => {
+  const btnOAuthBot = $('btnOAuthDiscordBot');
+  const btnOAuthUser = $('btnOAuthDiscord') || $('btnOAuthGithub');
+  const btnInvite = $('btnInviteBotOnly');
+  const btnCopyUrl = $('btnCopyOAuthUrl');
+
+  async function openDiscordOAuth(mode){
+    try {
+      const redirectUri = `${window.location.origin}/auth/discord/callback`;
+      const res = await fetch(`/api/auth/discord/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
+      const data = await res.json();
+      const targetUrl = mode === 'bot' ? (data.botAuthUrl || data.url) : data.url;
+      const popup = window.open(targetUrl || 'https://discord.com/channels/@me', 'discord_oauth_popup', 'width=620,height=720');
+      if(!popup){
+        const u = prompt('Please allow popups for Discord authentication, or enter your Discord username to link:', (userIn ? userIn.value : ''));
+        if(u) connectDiscord(u);
+      }
+    } catch(e){
+      const u = prompt('Enter your Discord username (or username#0000) to link with TMC Awards:', (userIn ? userIn.value : ''));
+      if(u) connectDiscord(u);
+    }
+  }
+
+  if(btnOAuthBot){
+    btnOAuthBot.onclick = () => openDiscordOAuth('bot');
+  }
+  if(btnOAuthUser){
+    btnOAuthUser.onclick = () => openDiscordOAuth('user');
+  }
+  if(btnInvite){
+    btnInvite.onclick = async () => {
       try {
         const res = await fetch('/api/auth/discord/url');
         const data = await res.json();
-        const popup = window.open(data.url || 'https://discord.com/channels/@me', 'discord_oauth_popup', 'width=600,height=700');
-        if(!data.configured || !popup){
-          const u = prompt('Enter your Discord username (or username#0000) to link with TMC Awards:', (userIn ? userIn.value : ''));
-          if(u) connectDiscord(u);
-        }
+        window.open(data.inviteUrl || 'https://discord.com/oauth2/authorize?client_id=1560199706477465640&permissions=8&integration_type=0&scope=bot', '_blank');
       } catch(e){
-        const u = prompt('Enter your Discord username (or username#0000) to link with TMC Awards:', (userIn ? userIn.value : ''));
-        if(u) connectDiscord(u);
+        window.open('https://discord.com/oauth2/authorize?client_id=1560199706477465640&permissions=8&integration_type=0&scope=bot', '_blank');
+      }
+    };
+  }
+  if(btnCopyUrl){
+    btnCopyUrl.onclick = async () => {
+      try {
+        const redirectUri = `${window.location.origin}/auth/discord/callback`;
+        const res = await fetch(`/api/auth/discord/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
+        const data = await res.json();
+        const copyText = data.botAuthUrl || data.url;
+        await navigator.clipboard.writeText(copyText);
+        btnCopyUrl.textContent = '✓ Copied!';
+        setTimeout(() => { btnCopyUrl.textContent = '📋 Copy Auth URL'; }, 2500);
+      } catch(e){
+        prompt('Copy Discord OAuth Auth URL:', 'https://discord.com/api/oauth2/authorize?client_id=1560199706477465640&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=https%3A%2F%2Fmccreatorstamil.vercel.app%2Fauth%2Fdiscord%2Fcallback&response_type=code');
       }
     };
   }
@@ -688,6 +726,11 @@ function setupDiscordAuthControls(){
   // Cross-origin message listener for OAuth popup completion
   window.addEventListener('message', async (event) => {
     if(event.data?.type === 'OAUTH_AUTH_SUCCESS' && (event.data?.provider === 'discord' || event.data?.provider === 'github')){
+      if(event.data?.user){
+        connectedDiscordUser = event.data.user;
+        await loginWithDiscordUser(connectedDiscordUser);
+        return;
+      }
       const targetUser = (userIn && userIn.value.trim()) || 'discord_creator';
       await connectDiscord(targetUser);
       if(connectedDiscordUser){
