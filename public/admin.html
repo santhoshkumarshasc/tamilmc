@@ -53,25 +53,31 @@
     🔒 TMC ADMIN ACCESS
   </div>
   <h2 style="margin-bottom:8px;font-size:26px" data-i18n="ad.signin">Admin verification</h2>
-  <p class="note" style="margin:0 0 18px" data-i18n="ad.signin_note">Restricted area for authorized administrators only. Enter your administrator key or continue with your credentials. Session automatically expires after 5 minutes of inactivity.</p>
+  <p class="note" style="margin:0 0 18px">Log in with your administrator Gmail address and security token to manage certificates, creator profiles, and community awards.</p>
   
   <div class="form">
     <div>
-      <label for="lToken" data-i18n="ad.token_label">Admin Security Key</label>
-      <input id="lToken" type="password" placeholder="Enter administrator key" autocomplete="current-password" style="font-weight:700;letter-spacing:1px">
+      <label for="lEmail">Admin Gmail / Email</label>
+      <input id="lEmail" type="email" placeholder="e.g. your-gmail@gmail.com" autocomplete="email" style="font-weight:600">
     </div>
-    <button class="btn primary" id="lTokenGo" data-i18n="ad.token_go">Login with Security Key</button>
-
-    <div style="display:flex;align-items:center;gap:12px;margin:8px 0">
-      <div style="flex:1;height:1px;background:var(--line-subtle)"></div>
-      <span style="font-size:12px;color:var(--muted);font-weight:600">OR WITH CREDENTIALS</span>
-      <div style="flex:1;height:1px;background:var(--line-subtle)"></div>
+    <div>
+      <label for="lToken">Admin Token / Security Key</label>
+      <input id="lToken" type="password" placeholder="Enter administrator token (e.g. ADMINOFTMC)" autocomplete="current-password" style="font-weight:700;letter-spacing:1px">
     </div>
-
-    <div><label for="lEmail" data-i18n="a.email">Email</label><input id="lEmail" type="email" autocomplete="email"></div>
-    <div><label for="lPass">Password</label><input id="lPass" type="password" autocomplete="current-password"></div>
     <div id="lMsg" class="msg hide" role="status"></div>
-    <button class="btn" id="lGo" data-i18n="ad.continue">Continue with Email</button>
+    <button class="btn primary" id="lTokenGo" style="width:100%">🔑 Login with Gmail & Token</button>
+
+    <div style="display:flex;align-items:center;gap:12px;margin:12px 0 6px">
+      <div style="flex:1;height:1px;background:var(--line-subtle)"></div>
+      <span style="font-size:11px;color:var(--muted);font-weight:600">OR WITH PASSWORD</span>
+      <div style="flex:1;height:1px;background:var(--line-subtle)"></div>
+    </div>
+
+    <div>
+      <label for="lPass">Account Password</label>
+      <input id="lPass" type="password" placeholder="Password (if set)" autocomplete="current-password">
+    </div>
+    <button class="btn" id="lGo" style="width:100%">Sign in with Password</button>
   </div>
 </div>
 
@@ -105,9 +111,27 @@
       <div class="panel glass">
         <h3 style="margin-bottom:16px" data-i18n="ad.create">Create certificate</h3>
         <div class="form">
+          <!-- Team Certificate Toggle & Options -->
+          <div style="background:var(--surface-inset);border:1px solid var(--line-subtle);border-radius:12px;padding:12px 14px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <input type="checkbox" id="cIsTeam" style="width:18px;height:18px;accent-color:var(--em);cursor:pointer">
+              <label for="cIsTeam" style="margin:0;font-weight:700;color:var(--text);cursor:pointer">★ Create Team Certificate with Token</label>
+            </div>
+            <div id="teamFieldsPane" class="hide" style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+              <div>
+                <label for="cTeamName" style="font-size:12px;font-weight:700">Team / Guild Name</label>
+                <input id="cTeamName" maxlength="60" placeholder="e.g. Tamil SMP Champions or Redstone Guild">
+              </div>
+              <div>
+                <label for="cTeamMembers" style="font-size:12px;font-weight:700">Team Members (names / handles)</label>
+                <input id="cTeamMembers" maxlength="140" placeholder="e.g. Santhosh, Crafter_Vimal, Raj, BlockMaster">
+              </div>
+            </div>
+          </div>
+
           <div><label for="cPick" data-i18n="ad.pick">Pick a creator (optional)</label><select id="cPick"></select></div>
           <div class="row2">
-            <div><label for="cName" data-i18n="ad.cname">Name on certificate</label><input id="cName" maxlength="60" placeholder="e.g. Santhosh"></div>
+            <div><label for="cName" data-i18n="ad.cname">Name on certificate</label><input id="cName" maxlength="60" placeholder="e.g. Santhosh or Team Lead"></div>
             <div><label for="cChannel" data-i18n="ad.cchannel">Channel name</label><input id="cChannel" maxlength="60" placeholder="e.g. Block Thambi"></div>
           </div>
           <div><label for="cType" data-i18n="ad.type">Certificate type</label><select id="cType"></select></div>
@@ -124,7 +148,7 @@
           <div id="cOutMsg" class="msg hide" role="status"></div>
           <div id="cOut" class="hide">
             <div class="token-out" id="cToken"></div>
-            <p class="note" data-i18n="ad.once">Shown once. Copy it now and give it to the creator to redeem.</p>
+            <p class="note" data-i18n="ad.once">Shown once. Copy it now and give it to the creator or team to redeem.</p>
             <button class="btn small" id="cCopy" data-i18n="ad.copy">Copy token</button>
           </div>
           <button class="btn primary" id="cMake" data-i18n="ad.make">Generate token</button>

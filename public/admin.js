@@ -58,17 +58,19 @@ if($('lTokenGo')){
   const submitToken = async()=>{
     clearMsg($('lMsg'));
     const tk = ($('lToken').value || '').trim();
-    if(!tk) return setMsg($('lMsg'), t('ad.fail'), 'err');
+    const em = ($('lEmail').value || '').trim();
+    if(!tk && !em) return setMsg($('lMsg'), 'Please enter administrator token or credentials.', 'err');
     $('lTokenGo').disabled = true;
-    const {data, error} = await sb.rpc('admin_login_token', {token: tk});
+    const {data, error} = await sb.rpc('admin_login_token', {token: tk, email: em});
     $('lTokenGo').disabled = false;
     if(error || !data || !data.ok){
-      return setMsg($('lMsg'), t('ad.fail'), 'err');
+      return setMsg($('lMsg'), (data && data.error) || t('ad.fail'), 'err');
     }
     await enter();
   };
   $('lTokenGo').onclick = submitToken;
-  $('lToken').onkeydown = e => { if(e.key === 'Enter') submitToken(); };
+  if($('lToken')) $('lToken').onkeydown = e => { if(e.key === 'Enter') submitToken(); };
+  if($('lEmail')) $('lEmail').onkeydown = e => { if(e.key === 'Enter') submitToken(); };
 }
 
 $('lGo').onclick=async()=>{
@@ -143,6 +145,18 @@ async function refresh(){
 }
 
 /* ---------- certificates ---------- */
+if($('cIsTeam')){
+  $('cIsTeam').onchange = () => {
+    const isT = $('cIsTeam').checked;
+    if($('teamFieldsPane')) $('teamFieldsPane').classList.toggle('hide', !isT);
+    if(isT){
+      if(!$('cAward').value) $('cAward').value = 'Team Championship Award';
+      if(!$('cAwardTa').value) $('cAwardTa').value = 'குழு சாம்பியன்ஷிப் விருது';
+      if(!$('cName').value) $('cName').value = 'Team Members';
+    }
+  };
+}
+
 $('cPick').onchange=e=>{const p=profiles.find(x=>x.id===e.target.value);if(p){$('cName').value=p.display_name;$('cChannel').value=p.channel_name}};
 function applyType(){
   const ty=types.find(x=>x.id===$('cType').value);if(!ty)return;
@@ -151,24 +165,71 @@ function applyType(){
 $('cType').onchange=()=>{applyType()};
 $('cMake').onclick=async()=>{
   clearMsg($('cOutMsg'));
-  const name=$('cName').value.trim(),channel=$('cChannel').value.trim(),award=$('cAward').value.trim(),awardTa=$('cAwardTa').value.trim(),url=$('cUrl').value.trim();
+  const isTeam = $('cIsTeam') && $('cIsTeam').checked;
+  const teamName = isTeam ? ($('cTeamName').value.trim() || 'Tamil MC SMP Guild') : null;
+  const teamMembers = isTeam ? ($('cTeamMembers').value.trim() || 'Team Members') : null;
+  const name=($('cName').value.trim()) || (isTeam ? (teamName || 'Team Members') : '');
+  const channel=($('cChannel').value.trim()) || (isTeam ? (teamName || 'Community Team') : '');
+  const award=$('cAward').value.trim() || (isTeam ? 'Team Championship Award' : ''),awardTa=$('cAwardTa').value.trim(),url=$('cUrl').value.trim();
   const ty=types.find(x=>x.id===$('cType').value)||null;
-  if(name.length<2||channel.length<2||award.length<2)return setMsg($('cOutMsg'),t('ad.fields'),'err');
+  if(!isTeam && (name.length<2||channel.length<2||award.length<2))return setMsg($('cOutMsg'),t('ad.fields'),'err');
+  if(isTeam && !teamName) return setMsg($('cOutMsg'), 'Please provide a Team / Guild name.', 'err');
   if(url&&!safeUrl(url))return setMsg($('cOutMsg'),t('ad.urlbad'),'err');
   $('cMake').disabled=true;
-  const {data,error}=await sb.rpc('admin_create_certificate',{p_recipient:name,p_channel:channel,p_type_id:ty?ty.id:null,p_award:award,p_award_ta:awardTa,p_content_title:$('cTitle').value,p_content_url:url,p_message:$('cMsg').value,p_theme:$('cTheme').value});
+  const {data,error}=await sb.rpc('admin_create_certificate',{
+    p_recipient:name,
+    p_channel:channel,
+    p_type_id:ty?ty.id:null,
+    p_award:award,
+    p_award_ta:awardTa,
+    p_content_title:$('cTitle').value,
+    p_content_url:url,
+    p_message:$('cMsg').value,
+    p_theme:$('cTheme').value,
+    p_is_team_award:isTeam,
+    p_team_name:teamName,
+    p_team_members:teamMembers
+  });
   $('cMake').disabled=false;
   if(error)return setMsg($('cOutMsg'),t('ad.createfail'),'err');
   $('cToken').textContent=data.token;$('cOut').classList.remove('hide');
   setMsg($('cOutMsg'),t('ad.created',{c:data.cert_code}),'ok');
-  current={recipient_name:name,channel_name:channel,award,award_ta:awardTa||null,heading:ty?ty.heading:null,heading_ta:ty?ty.heading_ta:null,icon:ty?ty.icon:'star',content_title:$('cTitle').value.trim(),message:$('cMsg').value.trim(),cert_code:data.cert_code,issued_at:new Date()};
+  current={
+    recipient_name:name,
+    channel_name:channel,
+    award,
+    award_ta:awardTa||null,
+    heading:isTeam ? 'Official Team Achievement Certificate' : (ty?ty.heading:null),
+    heading_ta:isTeam ? 'அதிகாரப்பூர்வ குழு சாதனைச் சான்றிதழ்' : (ty?ty.heading_ta:null),
+    icon:isTeam ? 'shield' : (ty?ty.icon:'star'),
+    content_title:$('cTitle').value.trim(),
+    message:$('cMsg').value.trim(),
+    cert_code:data.cert_code,
+    is_team_award:isTeam,
+    team_name:teamName,
+    team_members:teamMembers,
+    badge_text:isTeam ? 'TEAM CERTIFICATE' : null,
+    issued_at:new Date()
+  };
   drawCert($('aCert'),current,$('cTheme').value);$('aDl').disabled=false;
-  ['cName','cChannel','cTitle','cUrl'].forEach(i=>$(i).value='');$('cPick').value='';
+  ['cName','cChannel','cTitle','cUrl','cTeamName','cTeamMembers'].forEach(i=>{if($(i))$(i).value=''});$('cPick').value='';
+  if($('cIsTeam')) { $('cIsTeam').checked=false; $('teamFieldsPane')?.classList.add('hide'); }
   await refresh();
 };
 $('cTheme').onchange=()=>{if(current)drawCert($('aCert'),current,$('cTheme').value)};
 $('cCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('cToken').textContent);setMsg($('cOutMsg'),t('ad.copied'),'ok')}catch(e){setMsg($('cOutMsg'),t('ad.copyfail'),'err')}};
-$('aDl').onclick=()=>{if(current)downloadCanvas($('aCert'),'preview-'+current.cert_code+'.png')};
+$('aDl').onclick=()=>{
+  if(!current) return;
+  const btn = $('aDl');
+  const prevText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Saving...';
+  downloadCanvas($('aCert'),'preview-'+current.cert_code+'.png', (ok)=>{
+    btn.disabled = false;
+    btn.textContent = ok ? '✓ Saved!' : prevText;
+    setTimeout(()=>{ if(btn) btn.textContent = prevText; }, 2500);
+  });
+};
 
 function renderCerts(){
   $('cBody').innerHTML=certs.length?certs.map(c=>`<tr><td><b>${esc(c.cert_code)}</b></td><td>${esc(c.recipient_name)}</td><td>${esc(c.type_name||'-')}</td><td>${esc(certField(c,'award'))}</td>
@@ -223,7 +284,7 @@ function renderUsers(){
       <td><code>${esc(u.id)}</code></td>
       <td><b>${esc(u.email)}</b></td>
       <td>${fmtDate(u.created_at)}</td>
-      <td>${prof?esc(prof.channel_name)+' (@'+esc(prof.handle)+')':'-'}</td>
+      <td>${u.discord_username ? ('<div style="color:#5865F2;font-weight:600;font-size:12px;">Discord: @'+esc(u.discord_username)+'</div>') : ''}${prof?esc(prof.channel_name)+' (@'+esc(prof.handle)+')':'-'}</td>
       <td><button class="btn small danger" data-del-u="${esc(u.id)}">Delete Account</button></td>
     </tr>`;
   }).join(''):`<tr><td colspan="5" class="empty">No registered user accounts yet.</td></tr>`;

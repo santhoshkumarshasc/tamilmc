@@ -3,7 +3,20 @@
 const COLORS=['#1f9d5e','#1b8fd6','#e0a81f','#a855f7','#f97316','#ec4899','#3358c4'];
 const STYLE_CLASS={raised:'s-glass',flat:'s-solid',outline:'s-neon'};
 
-let session=null,myProfile=null,list=[],myLikes=new Set(),myVoteId=null,myCerts=[],q='',themeKey='emerald',current=null,authMode='in';
+function getStoredSession(){
+  try {
+    const raw = localStorage.getItem('tmc_auth_session');
+    if(raw) return JSON.parse(raw);
+    const dbRaw = localStorage.getItem('tmc_live_db_v3');
+    if(dbRaw) {
+      const parsed = JSON.parse(dbRaw);
+      if(parsed && parsed.session) return parsed.session;
+    }
+  } catch(e){}
+  return null;
+}
+
+let session=getStoredSession(),myProfile=null,list=[],myLikes=new Set(),myVoteId=null,myCerts=[],q='',themeKey='emerald',current=null,authMode='in';
 let editColor='#1f9d5e',editAvatarImg='',avatarMode='upload';
 let verifiedCert=null,claimedCert=null;
 let customLinks=[];
@@ -22,7 +35,7 @@ function setPage(pageId){
     pageId='404';
   }
   if(pageId==='dashboard'&&!session){
-    openAuth('in');
+    openAuth();
     pageId='showcase';
   }
   if(!PAGES.includes(pageId)) pageId='showcase';
@@ -295,7 +308,7 @@ async function loadPublic(){
   renderGrid();
 }
 async function like(id){
-  if(!session)return openAuth('in');
+  if(!session)return openAuth();
   const {data,error}=await sb.rpc('toggle_like',{p_profile:id});
   if(error)return;
   const p=list.find(x=>x.id===id);if(p)p.likes=data.likes;
@@ -342,126 +355,73 @@ function openProfile(handle){
   $('profDlg').showModal();
 }
 
-/* ---------- AUTH & PROFILE REDIRECT ---------- */
-function openAuth(mode){
-  authMode=mode;
-  authUi();
+/* ---------- DISCORD ONLY AUTHENTICATION ---------- */
+function openAuth(){
   clearMsg($('aMsg'));
-  $('aPass').value='';
-  if($('aPassConfirm')) $('aPassConfirm').value='';
-  if($('passMatchIndicator')) $('passMatchIndicator').classList.add('hide');
-  if($('togglePassVis')) $('togglePassVis').textContent=t('a.show_pass');
-  $('aPass').type='password';
-  if($('aPassConfirm')) $('aPassConfirm').type='password';
+  connectedDiscordUser = null;
+  discordDmCodeSent = false;
+  discordDmCodeVerified = false;
+  currentDmCode = '';
+  if($('discordConnectedState')) $('discordConnectedState').classList.add('hide');
+  if($('discordInputState')) $('discordInputState').classList.remove('hide');
+  if($('discordDmNotice')) $('discordDmNotice').classList.add('hide');
+  if($('discordCodeVerifyGroup')) $('discordCodeVerifyGroup').classList.add('hide');
+  if($('aConfirmCode')) $('aConfirmCode').value = '';
+  if($('aDiscordUser')) $('aDiscordUser').value = '';
+  if($('discordCodeStatus')) $('discordCodeStatus').classList.add('hide');
   $('authDlg').showModal();
 }
 
-function authUi(){
-  const isUp=authMode==='up';
-  $('tabIn').setAttribute('aria-pressed',!isUp);
-  $('tabUp').setAttribute('aria-pressed',isUp);
-  $('authTitle').textContent=isUp?t('auth.up'):t('auth.in');
-  $('aGo').textContent=isUp?t('auth.up'):t('auth.in');
-  $('aPass').autocomplete=isUp?'new-password':'current-password';
-  if($('aPassLabel')) $('aPassLabel').textContent=isUp?t('a.pass'):t('a.pass');
-
-  if($('aPassConfirmGroup')){
-    if(isUp){
-      $('aPassConfirmGroup').classList.remove('hide');
-    } else {
-      $('aPassConfirmGroup').classList.add('hide');
-    }
-  }
-
-  if($('aTermsGroup')){
-    if(isUp){
-      $('aTermsGroup').classList.remove('hide');
-    } else {
-      $('aTermsGroup').classList.add('hide');
-    }
-  }
-
-  if($('passMatchIndicator')) $('passMatchIndicator').classList.add('hide');
-}
+function authUi(){}
 
 function authBtns(){
-  const signedIn=!!session;
-  $('authBtn').textContent=signedIn?t('auth.out'):t('auth.in');
-  if($('mAuthBtn')) $('mAuthBtn').textContent=signedIn?t('auth.out'):t('auth.in');
-  $('heroJoin').textContent=signedIn?t('hero.cta1b'):t('hero.cta1');
+  const signedIn = !!session;
+  const dcName = session?.user?.discord_username || session?.user?.name;
+  
+  const authLabel = $('authBtnLabel');
+  if(authLabel){
+    authLabel.textContent = signedIn ? (dcName ? `@${dcName} • ${t('auth.out')}` : t('auth.out')) : t('auth.in');
+  } else {
+    $('authBtn').textContent = signedIn ? t('auth.out') : t('auth.in');
+  }
+  
+  const mAuthLabel = $('mAuthBtnLabel');
+  if(mAuthLabel){
+    mAuthLabel.textContent = signedIn ? (dcName ? `@${dcName} • ${t('auth.out')}` : t('auth.out')) : t('auth.in');
+  } else if($('mAuthBtn')){
+    $('mAuthBtn').textContent = signedIn ? t('auth.out') : t('auth.in');
+  }
+
+  $('heroJoin').textContent = signedIn ? t('hero.cta1b') : t('hero.cta1');
   if($('navDash')){
-    if(signedIn){
-      $('navDash').classList.remove('hide');
-    } else {
-      $('navDash').classList.add('hide');
-    }
+    if(signedIn) $('navDash').classList.remove('hide');
+    else $('navDash').classList.add('hide');
   }
   if($('mNavDash')){
-    if(signedIn){
-      $('mNavDash').classList.remove('hide');
-    } else {
-      $('mNavDash').classList.add('hide');
-    }
+    if(signedIn) $('mNavDash').classList.remove('hide');
+    else $('mNavDash').classList.add('hide');
   }
   if($('footNavDash')){
-    if(signedIn){
-      $('footNavDash').classList.remove('hide');
-    } else {
-      $('footNavDash').classList.add('hide');
-    }
+    if(signedIn) $('footNavDash').classList.remove('hide');
+    else $('footNavDash').classList.add('hide');
   }
 }
 
-function setupAuthPasswordControls(){
-  const aPass=$('aPass');
-  const aPassConf=$('aPassConfirm');
-  const hint=$('passMatchIndicator');
-  const toggleBtn=$('togglePassVis');
+function setupAuthPasswordControls(){}
 
-  function checkMatch(){
-    if(authMode!=='up'||!hint){
-      if(hint) hint.classList.add('hide');
-      return;
-    }
-    const p1=aPass.value;
-    const p2=aPassConf?aPassConf.value:'';
-    if(!p2){
-      hint.classList.add('hide');
-      return;
-    }
-    hint.classList.remove('hide');
-    if(p1===p2){
-      hint.className='pass-hint match';
-      hint.textContent=t('a.pass_match');
-    } else {
-      hint.className='pass-hint mismatch';
-      hint.textContent=t('a.pass_mismatch_live');
-    }
-  }
-
-  if(aPass) aPass.addEventListener('input',checkMatch);
-  if(aPassConf) aPassConf.addEventListener('input',checkMatch);
-
-  if(toggleBtn){
-    toggleBtn.onclick=()=>{
-      const isPass=aPass.type==='password';
-      aPass.type=isPass?'text':'password';
-      if(aPassConf) aPassConf.type=isPass?'text':'password';
-      toggleBtn.textContent=isPass?t('a.hide_pass'):t('a.show_pass');
-    };
-  }
-}
-
-$('tabIn').onclick=()=>{authMode='in';authUi();clearMsg($('aMsg'))};
-$('tabUp').onclick=()=>{authMode='up';authUi();clearMsg($('aMsg'))};
-$('authClose').onclick=()=>$('authDlg').close();
+if($('authClose')) $('authClose').onclick=()=>$('authDlg').close();
 
 async function doSignOut(){
+  try{ localStorage.removeItem('tmc_auth_session'); }catch(e){}
   await sb.auth.signOut();
   session=null;
   myProfile=null;
   myCerts=[];
   current=null;
+  connectedDiscordUser=null;
+  discordDmCodeSent=false;
+  discordDmCodeVerified=false;
+  currentDmCode='';
   fillForm(null);
   renderMyCerts();
   authBtns();
@@ -475,82 +435,297 @@ $('authBtn').onclick=async()=>{
   if(session){
     await doSignOut();
   } else {
-    openAuth('in');
+    openAuth();
   }
 };
+if($('mAuthBtn')){
+  $('mAuthBtn').onclick=async()=>{
+    if($('mobileNavClose')) $('mobileNavClose').click();
+    if(session){
+      await doSignOut();
+    } else {
+      openAuth();
+    }
+  };
+}
 $('heroJoin').onclick=()=>{
   if(session){
     setPage('dashboard');
   } else {
-    openAuth('up');
+    openAuth();
   }
 };
-$('aGo').onclick=async()=>{
-  const email=$('aEmail').value.trim(),pass=$('aPass').value;
-  // Support secret admin token
-  if(pass==='ADMINOFTMC'||email==='ADMINOFTMC'){
-    const {data}=await sb.rpc('admin_login_token',{token:'ADMINOFTMC'});
-    if(data&&data.ok){
-      $('authDlg').close();
-      $('aPass').value='';
-      if($('aPassConfirm')) $('aPassConfirm').value='';
-      session=data.session;
-      authBtns();
-      location.href='/admin?token=ADMINOFTMC';
+let connectedDiscordUser = null;
+let discordDmCodeSent = false;
+let discordDmCodeVerified = false;
+let currentDmCode = '';
+
+function setupDiscordAuthControls(){
+  const btnVerify = $('btnVerifyDiscord') || $('btnVerifyGithub');
+  const btnOAuth = $('btnOAuthDiscord') || $('btnOAuthGithub');
+  const btnChange = $('btnChangeDiscord') || $('btnChangeGithub');
+  const btnSendDm = $('btnSendDiscordDm') || $('btnSendGithubDm');
+  const btnAutoFill = $('btnAutoFillDmCode');
+  const btnCopy = $('btnCopyDmCode');
+  const btnVerifyDm = $('btnVerifyDmCode');
+  const userIn = $('aDiscordUser') || $('aGithubUser');
+  const codeIn = $('aConfirmCode');
+  const statusEl = $('discordCodeStatus') || $('githubCodeStatus');
+
+  async function connectDiscord(username){
+    const raw = (username || (userIn ? userIn.value : '')).trim().replace(/^@/, '');
+    if(!raw){
+      setMsg($('aMsg'), t('a.discord_user_req') || 'Please enter your Discord username.', 'err');
       return;
     }
-  }
-  if(!/^\S+@\S+\.\S+$/.test(email))return setMsg($('aMsg'),t('m.a_email'),'err');
-  if(authMode==='up'){
-    if(pass.length<10) return setMsg($('aMsg'),t('m.a_pass'),'err');
-    const passConfirm=$('aPassConfirm')?$('aPassConfirm').value:'';
-    if(!passConfirm) return setMsg($('aMsg'),t('m.a_pass_confirm_req'),'err');
-    if(pass!==passConfirm) return setMsg($('aMsg'),t('m.a_pass_mismatch'),'err');
-    if($('aAgreeTerms')&&!$('aAgreeTerms').checked){
-      return setMsg($('aMsg'),t('m.terms_required'),'err');
+    if(btnVerify) btnVerify.disabled = true;
+    try {
+      const res = await fetch('/api/auth/discord/verify-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: raw })
+      });
+      const data = await res.json();
+      if(btnVerify) btnVerify.disabled = false;
+      if(data.success && data.user){
+        connectedDiscordUser = data.user;
+        discordDmCodeVerified = false;
+        if($('discordInputState')) $('discordInputState').classList.add('hide');
+        if($('discordConnectedState')) $('discordConnectedState').classList.remove('hide');
+        if($('githubInputState')) $('githubInputState').classList.add('hide');
+        if($('githubConnectedState')) $('githubConnectedState').classList.remove('hide');
+
+        const nameLabel = data.user.tag || data.user.username;
+        if($('discordUserLogin')) $('discordUserLogin').textContent = '@' + nameLabel;
+        if($('ghUserLogin')) $('ghUserLogin').textContent = '@' + nameLabel;
+
+        if($('discordUserAvatar')) $('discordUserAvatar').src = data.user.avatar_url;
+        if($('ghUserAvatar')) $('ghUserAvatar').src = data.user.avatar_url;
+
+        if($('discordDmNotice')) $('discordDmNotice').classList.add('hide');
+        if($('discordCodeVerifyGroup')) $('discordCodeVerifyGroup').classList.add('hide');
+        clearMsg($('aMsg'));
+      } else {
+        setMsg($('aMsg'), data.error || 'Discord user not found. Please check spelling.', 'err');
+      }
+    } catch(e){
+      if(btnVerify) btnVerify.disabled = false;
+      setMsg($('aMsg'), 'Could not connect to Discord. Please try again.', 'err');
     }
   }
-  $('aGo').disabled=true;
-  if(authMode==='up'){
-    const res=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:location.origin}});
-    $('aGo').disabled=false;
-    if(res.error){
-      setMsg($('aMsg'),t('m.a_up_err'),'err');
-    } else {
-      setMsg($('aMsg'),t('m.a_up_ok'),'ok');
-      fx.confetti();
-      session=res.data?.session||null;
-      await onSession(session);
-      setTimeout(()=>{
-        $('authDlg').close();
-        $('aPass').value='';
-        if($('aPassConfirm')) $('aPassConfirm').value='';
-        authBtns();
-        setPage('dashboard');
-      },400);
+
+  if(btnVerify) btnVerify.onclick = () => connectDiscord();
+  if(userIn) userIn.onkeydown = (e) => { if(e.key==='Enter'){ e.preventDefault(); connectDiscord(); } };
+
+  if(btnOAuth){
+    btnOAuth.onclick = async () => {
+      try {
+        const res = await fetch('/api/auth/discord/url');
+        const data = await res.json();
+        const popup = window.open(data.url || 'https://discord.com/channels/@me', 'discord_oauth_popup', 'width=600,height=700');
+        if(!data.configured || !popup){
+          const u = prompt('Enter your Discord username (or username#0000) to link with TMC Awards:', (userIn ? userIn.value : ''));
+          if(u) connectDiscord(u);
+        }
+      } catch(e){
+        const u = prompt('Enter your Discord username (or username#0000) to link with TMC Awards:', (userIn ? userIn.value : ''));
+        if(u) connectDiscord(u);
+      }
+    };
+  }
+
+  if(btnChange){
+    btnChange.onclick = () => {
+      connectedDiscordUser = null;
+      discordDmCodeSent = false;
+      discordDmCodeVerified = false;
+      currentDmCode = '';
+      if($('discordConnectedState')) $('discordConnectedState').classList.add('hide');
+      if($('discordInputState')) $('discordInputState').classList.remove('hide');
+      if($('githubConnectedState')) $('githubConnectedState').classList.add('hide');
+      if($('githubInputState')) $('githubInputState').classList.remove('hide');
+      if(codeIn) codeIn.value = '';
+      if(statusEl) statusEl.classList.add('hide');
+    };
+  }
+
+  if(btnSendDm){
+    btnSendDm.onclick = async () => {
+      if(!connectedDiscordUser){
+        setMsg($('aMsg'), 'Please connect your Discord account first.', 'err');
+        return;
+      }
+      btnSendDm.disabled = true;
+      btnSendDm.textContent = 'Sending DM Code via TMC Bot...';
+      try {
+        const discordId = connectedDiscordUser.discord_id || (/^\d{17,20}$/.test(connectedDiscordUser.id) ? connectedDiscordUser.id : null);
+        const res = await fetch('/api/auth/discord/send-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: connectedDiscordUser.username || connectedDiscordUser.tag || connectedDiscordUser.login,
+            discord_id: discordId,
+            email: $('aEmail') ? $('aEmail').value.trim() : ''
+          })
+        });
+        const data = await res.json();
+        btnSendDm.disabled = false;
+        btnSendDm.textContent = '📨 Re-send Confirmation Code in Discord DM';
+        if(data.success){
+          discordDmCodeSent = true;
+          currentDmCode = data.code;
+          if($('discordDmNotice')) $('discordDmNotice').classList.remove('hide');
+          if($('githubDmNotice')) $('githubDmNotice').classList.remove('hide');
+          if($('discordDmCodeValue')) $('discordDmCodeValue').textContent = data.code;
+          if($('ghDmCodeValue')) $('ghDmCodeValue').textContent = data.code;
+          const timeStr = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+          if($('discordDmTime')) $('discordDmTime').textContent = timeStr;
+          if($('ghDmTime')) $('ghDmTime').textContent = timeStr;
+
+          if($('discordRealDmStatus')){
+            if(data.realDmSent){
+              $('discordRealDmStatus').style.display = 'block';
+              $('discordRealDmStatus').textContent = '✓ Direct Message delivered to your Discord inbox by Bot!';
+            } else {
+              $('discordRealDmStatus').style.display = 'block';
+              $('discordRealDmStatus').style.color = '#7983f5';
+              $('discordRealDmStatus').textContent = '💬 Code generated by Bot! (Invite bot to server or use Auto-Fill below)';
+            }
+          }
+
+          if($('discordCodeVerifyGroup')) $('discordCodeVerifyGroup').classList.remove('hide');
+          if($('githubCodeVerifyGroup')) $('githubCodeVerifyGroup').classList.remove('hide');
+          if(codeIn) codeIn.focus();
+          if(statusEl){
+            statusEl.className = 'pass-hint';
+            statusEl.textContent = data.realDmSent
+              ? '✓ Confirmation code delivered to @' + (connectedDiscordUser.tag || connectedDiscordUser.username) + ' via Discord DM!'
+              : 'Confirmation code ready for @' + (connectedDiscordUser.tag || connectedDiscordUser.username) + '. Enter it below:';
+            statusEl.classList.remove('hide');
+          }
+        } else {
+          setMsg($('aMsg'), data.error || 'Failed to dispatch Discord DM code.', 'err');
+        }
+      } catch(e){
+        btnSendDm.disabled = false;
+        btnSendDm.textContent = '📨 Send Confirmation Code in Discord DM';
+        setMsg($('aMsg'), 'Failed to dispatch confirmation code. Try again.', 'err');
+      }
+    };
+  }
+
+  if(btnAutoFill){
+    btnAutoFill.onclick = () => {
+      if(currentDmCode && codeIn){
+        codeIn.value = currentDmCode;
+        if(btnVerifyDm) btnVerifyDm.click();
+      }
+    };
+  }
+
+  if(btnCopy){
+    btnCopy.onclick = () => {
+      if(currentDmCode){
+        navigator.clipboard.writeText(currentDmCode);
+        btnCopy.textContent = 'Copied!';
+        setTimeout(() => { if(btnCopy) btnCopy.textContent = 'Copy Code'; }, 1500);
+      }
+    };
+  }
+
+  if(btnVerifyDm){
+    btnVerifyDm.onclick = async () => {
+      const code = (codeIn ? codeIn.value : '').trim();
+      if(!code || code.length !== 6){
+        if(statusEl){
+          statusEl.className = 'pass-hint mismatch';
+          statusEl.textContent = 'Please enter a 6-digit confirmation code.';
+          statusEl.classList.remove('hide');
+        }
+        return;
+      }
+      btnVerifyDm.disabled = true;
+      try {
+        const usernameVal = connectedDiscordUser ? (connectedDiscordUser.username || connectedDiscordUser.tag || connectedDiscordUser.login) : '';
+        const res = await fetch('/api/auth/discord/verify-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: usernameVal,
+            code: code
+          })
+        });
+        const data = await res.json();
+        btnVerifyDm.disabled = false;
+        if(data.success && data.verified){
+          discordDmCodeVerified = true;
+          if(statusEl){
+            statusEl.className = 'pass-hint match';
+            statusEl.textContent = '✓ Confirmation code verified! Entering TMC Awards...';
+            statusEl.classList.remove('hide');
+          }
+          clearMsg($('aMsg'));
+          await loginWithDiscordUser(connectedDiscordUser);
+        } else {
+          discordDmCodeVerified = false;
+          if(statusEl){
+            statusEl.className = 'pass-hint mismatch';
+            statusEl.textContent = data.error || 'Invalid confirmation code. Please check your Discord DM.';
+            statusEl.classList.remove('hide');
+          }
+        }
+      } catch(e){
+        btnVerifyDm.disabled = false;
+        if(statusEl){
+          statusEl.className = 'pass-hint mismatch';
+          statusEl.textContent = 'Verification check failed. Please try again.';
+          statusEl.classList.remove('hide');
+        }
+      }
+    };
+  }
+
+  // Cross-origin message listener for OAuth popup completion
+  window.addEventListener('message', async (event) => {
+    if(event.data?.type === 'OAUTH_AUTH_SUCCESS' && (event.data?.provider === 'discord' || event.data?.provider === 'github')){
+      const targetUser = (userIn && userIn.value.trim()) || 'discord_creator';
+      await connectDiscord(targetUser);
+      if(connectedDiscordUser){
+        await loginWithDiscordUser(connectedDiscordUser);
+      }
     }
-  } else {
-    const res=await sb.auth.signInWithPassword({email,password:pass});
-    $('aGo').disabled=false;
+  });
+}
+
+async function loginWithDiscordUser(discordUser){
+  if(!discordUser){
+    setMsg($('aMsg'), t('a.discord_user_req') || 'Please select a Discord account.', 'err');
+    return;
+  }
+  if($('aAgreeTerms') && !$('aAgreeTerms').checked){
+    setMsg($('aMsg'), t('m.terms_required') || 'Please accept the Terms & Conditions and Privacy Policy to continue.', 'err');
+    return;
+  }
+
+  try {
+    const res = await sb.auth.connectWithDiscord(discordUser);
     if(res.error){
-      setMsg($('aMsg'),res.error.message||t('m.a_in_err'),'err');
-    } else {
-      session=res.data?.session||null;
-      await onSession(session);
+      setMsg($('aMsg'), res.error.message || 'Failed to authenticate with Discord.', 'err');
+      return;
+    }
+    session = res.data?.session || null;
+    await onSession(session);
+    fx.confetti();
+    setMsg($('aMsg'), t('m.a_up_ok') || 'Discord account connected! Redirecting...', 'ok');
+    setTimeout(()=>{
       $('authDlg').close();
-      $('aPass').value='';
-      if($('aPassConfirm')) $('aPassConfirm').value='';
       authBtns();
       setPage('dashboard');
-    }
+    }, 400);
+  } catch(e){
+    setMsg($('aMsg'), 'Failed to connect with Discord. Try again.', 'err');
   }
-};
-$('aForgot').onclick=async()=>{
-  const email=$('aEmail').value.trim();
-  if(!/^\S+@\S+\.\S+$/.test(email))return setMsg($('aMsg'),t('m.reset_email'),'err');
-  await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin});
-  setMsg($('aMsg'),t('m.reset_ok'),'ok');
-};
+}
 
 /* ---------- DASHBOARD (MY PROFILE & AVATAR UPLOAD) ---------- */
 function setupAvatarControls(){
@@ -779,6 +954,10 @@ async function loadMine(){
 
 async function onSession(s){
   session=s;
+  try{
+    if(s) localStorage.setItem('tmc_auth_session', JSON.stringify(s));
+    else localStorage.removeItem('tmc_auth_session');
+  }catch(e){}
   authBtns();
   if(session){
     await loadMine();
@@ -796,7 +975,7 @@ async function onSession(s){
 }
 
 async function claimOrRedownloadWelcome(){
-  if(!session) return openAuth('in');
+  if(!session) return openAuth();
   await loadCerts();
   let welcomeCert = myCerts.find(c=>c.is_welcome);
   if(!welcomeCert && myCerts.length){
@@ -849,7 +1028,7 @@ async function claimOrRedownloadWelcome(){
 }
 
 $('pSave').onclick=async()=>{
-  if(!session) return openAuth('in');
+  if(!session) return openAuth();
   const d=formData(),handle=$('pHandle').value.trim().toLowerCase();
   if(d.display_name.length<2||d.channel_name.length<2)return setMsg($('pMsg'),t('m.name2'),'err');
   if(d.channel_url&&!safeUrl(d.channel_url))return setMsg($('pMsg'),t('m.url'),'err');
@@ -928,8 +1107,16 @@ function setupWelcomeCertModal(){
     $('btnDlWelcomeCert').onclick = () => {
       const cv = $('welcomeCertCanvas');
       if(!cv) return;
+      const btn = $('btnDlWelcomeCert');
+      const prevText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '⏳ Saving...';
       const h = (myProfile && myProfile.handle) || 'tmc_member';
-      downloadCanvas(cv, `TMC_Welcome_Certificate_${h}.png`);
+      downloadCanvas(cv, `TMC_Welcome_Certificate_${h}.png`, (ok) => {
+        btn.disabled = false;
+        btn.textContent = ok ? '✓ Saved!' : prevText;
+        setTimeout(() => { if(btn) btn.textContent = prevText; }, 2500);
+      });
     };
   }
 
@@ -1003,11 +1190,29 @@ function renderMyCerts(){
     b.onclick=()=>{
       const c = myCerts[+b.dataset.cDl];
       showCert(c);
-      downloadCanvas($('cert'), `TMC_Certificate_${c.cert_code}.png`);
+      const prevText = b.textContent;
+      b.disabled = true;
+      b.textContent = '⏳ Saving...';
+      downloadCanvas($('cert'), `TMC_Certificate_${c.cert_code}.png`, (ok) => {
+        b.disabled = false;
+        b.textContent = ok ? '✓ Saved!' : prevText;
+        setTimeout(() => { if(b) b.textContent = prevText; }, 2500);
+      });
     };
   });
 }
-$('dlBtn').onclick=()=>{if(current)downloadCanvas($('cert'),'certificate-'+current.cert_code+'.png')};
+$('dlBtn').onclick=()=>{
+  if(!current) return;
+  const btn = $('dlBtn');
+  const prevText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Saving...';
+  downloadCanvas($('cert'), 'certificate-'+current.cert_code+'.png', (ok) => {
+    btn.disabled = false;
+    btn.textContent = ok ? '✓ Saved!' : prevText;
+    setTimeout(() => { if(btn) btn.textContent = prevText; }, 2500);
+  });
+};
 async function loadCerts(){const {data}=await sb.rpc('my_certificates');myCerts=data||[];renderMyCerts();if(myCerts.length&&!current)showCert(myCerts[0])}
 
 /* ---------- REDEEM & VERIFY PAGE ---------- */
@@ -1048,7 +1253,18 @@ $('rBtn').onclick=async()=>{
   }
   await loadPublic();
 };
-$('rDlBtn').onclick=()=>{if(claimedCert)downloadCanvas($('rCertCanvas'),'certificate-'+claimedCert.cert_code+'.png')};
+$('rDlBtn').onclick=()=>{
+  if(!claimedCert) return;
+  const btn = $('rDlBtn');
+  const prevText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Saving...';
+  downloadCanvas($('rCertCanvas'),'certificate-'+claimedCert.cert_code+'.png', (ok) => {
+    btn.disabled = false;
+    btn.textContent = ok ? '✓ Saved!' : prevText;
+    setTimeout(() => { if(btn) btn.textContent = prevText; }, 2500);
+  });
+};
 
 $('vBtn').onclick=async()=>{
   clearMsg($('vMsg'));
@@ -1066,7 +1282,18 @@ $('vBtn').onclick=async()=>{
   drawCert($('vCert'),c,c.theme||'emerald');
   $('vDlBtn').disabled=false;
 };
-$('vDlBtn').onclick=()=>{if(verifiedCert)downloadCanvas($('vCert'),'verified-'+verifiedCert.cert_code+'.png')};
+$('vDlBtn').onclick=()=>{
+  if(!verifiedCert) return;
+  const btn = $('vDlBtn');
+  const prevText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Saving...';
+  downloadCanvas($('vCert'),'verified-'+verifiedCert.cert_code+'.png', (ok) => {
+    btn.disabled = false;
+    btn.textContent = ok ? '✓ Saved!' : prevText;
+    setTimeout(() => { if(btn) btn.textContent = prevText; }, 2500);
+  });
+};
 
 /* ---------- 3D MINECRAFT CUP TILT ---------- */
 const trophyStage=document.querySelector('.trophy-stage');
@@ -1312,15 +1539,28 @@ function rerender(){
   if($('mLangVal')) $('mLangVal').textContent = lang()==='ta'?'தமிழ்':'English';
 }
 document.addEventListener('langchange',rerender);
-themeButtons();fillSelects();swatches();setupAvatarControls();setupCustomLinksControls();setupWelcomeCertModal();setupAuthPasswordControls();setupPolicyModals();authUi();authBtns();
+themeButtons();fillSelects();swatches();setupAvatarControls();setupCustomLinksControls();setupWelcomeCertModal();setupAuthPasswordControls();setupDiscordAuthControls();setupPolicyModals();authUi();authBtns();
 sb.auth.onAuthStateChange((ev,s)=>{setTimeout(()=>onSession(s),0)});
 
 (async()=>{
-  await loadServerIcon();
-  await loadPublic();
-  await loadMyVote();
-  const {data}=await sb.auth.getSession();
-  await onSession(data.session);
+  // 1. Immediately restore session before anything else so refresh keeps user logged in
+  try{
+    const {data}=await sb.auth.getSession();
+    const curSess=(data&&data.session)?data.session:session;
+    if(curSess){
+      await onSession(curSess);
+    }
+  }catch(e){
+    if(session) await onSession(session);
+  }
+
+  // 2. Load feeds in parallel
+  await Promise.allSettled([
+    loadServerIcon(),
+    loadPublic(),
+    loadMyVote()
+  ]);
+
   samples();
   
   checkAdminTokenUrl();

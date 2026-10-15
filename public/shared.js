@@ -15,7 +15,22 @@ function createFallbackClient(){
   function loadDb(){
     try{
       const raw=localStorage.getItem(STORAGE_KEY);
-      if(raw)return JSON.parse(raw);
+      if(raw){
+        const parsed=JSON.parse(raw);
+        // Ensure session persists from dedicated storage key if available
+        try{
+          const savedSession=localStorage.getItem('tmc_auth_session');
+          if(savedSession){
+            parsed.session=JSON.parse(savedSession);
+          }
+        }catch(e){}
+        return parsed;
+      }
+    }catch(e){}
+    let savedSession=null;
+    try{
+      const rawSess=localStorage.getItem('tmc_auth_session');
+      if(rawSess) savedSession=JSON.parse(rawSess);
     }catch(e){}
     const init={
       users:[],
@@ -24,7 +39,7 @@ function createFallbackClient(){
       types:defaultTypes,
       likes:{},
       votes:{},
-      session:null,
+      session:savedSession,
       isAdmin:false,
       serverIcon:null
     };
@@ -32,11 +47,25 @@ function createFallbackClient(){
     return init;
   }
   function saveDb(data){
-    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}catch(e){}
+    try{
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+      if(data.session){
+        localStorage.setItem('tmc_auth_session',JSON.stringify(data.session));
+      } else {
+        localStorage.removeItem('tmc_auth_session');
+      }
+    }catch(e){}
   }
   let db=loadDb();
   let authListeners=[];
   function notifyAuth(event,session){
+    try{
+      if(session){
+        localStorage.setItem('tmc_auth_session',JSON.stringify(session));
+      } else {
+        localStorage.removeItem('tmc_auth_session');
+      }
+    }catch(e){}
     authListeners.forEach(cb=>{try{cb(event,session)}catch(e){console.error(e)}});
   }
   return {
@@ -266,9 +295,27 @@ function createFallbackClient(){
       }
       if(fn==='admin_login_token'){
         const tk=(params.token||'').trim();
-        if(tk==='ADMINOFTMC'){
-          const adminUser={id:'admin-tmc',email:'admin@tmcawards.org',is_admin:true,name:'TMC Administrator'};
-          const session={user:adminUser,access_token:'admin-secret-token-tmc'};
+        const em=(params.email||'').trim().toLowerCase();
+        // Support ADMINOFTMC with optional custom Gmail, or any admin in db.admins
+        if(!db.admins||!db.admins.length){
+          db.admins=[
+            {id:'admin-lead-1',email:'santhoshkumarshasc@gmail.com',name:'Santhosh (Lead Admin)',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true},
+            {id:'admin-lead-2',email:'admin@tmcawards.org',name:'TMC Awards Operations',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true},
+            {id:'admin-lead-3',email:'ogisbacktamil@gmail.com',name:'TMC Admin (Owner)',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true}
+          ];
+        }
+        const matchedAdm=db.admins.find(a=>(a.email.toLowerCase()===em||!em)&&(a.password===tk||tk==='ADMINOFTMC')&&a.is_active);
+        if(tk==='ADMINOFTMC'||matchedAdm){
+          const adminEmail=em||(matchedAdm?matchedAdm.email:'admin@tmcawards.org');
+          const adminName=(matchedAdm?matchedAdm.name:null)||(em?em.split('@')[0]:'TMC Administrator');
+          const adminUser={
+            id:matchedAdm?matchedAdm.id:('admin-'+Date.now()),
+            email:adminEmail,
+            is_admin:true,
+            name:adminName,
+            role:matchedAdm?matchedAdm.role:'super_admin'
+          };
+          const session={user:adminUser,access_token:'admin-secret-token-'+Date.now()};
           db.isAdmin=true;
           db.adminLoginAt=Date.now();
           db.session=session;
@@ -276,7 +323,7 @@ function createFallbackClient(){
           notifyAuth('SIGNED_IN',session);
           return {data:{ok:true,session},error:null};
         }
-        return {data:{ok:false,error:'Invalid secret token'},error:null};
+        return {data:{ok:false,error:'Invalid administrator credentials or token'},error:null};
       }
       if(fn==='delete_my_account'){
         if(db.session){
@@ -354,30 +401,34 @@ function createFallbackClient(){
       if(fn==='admin_create_certificate'){
         if(!isAdmin)return {data:null,error:{message:'unauthorized'}};
         const rnd=()=>Math.random().toString(36).substring(2,6).toUpperCase();
-        const token=`TMC-${rnd()}-${rnd()}-${rnd()}`,code=`CERT-${rnd()}${rnd()}`;
+        const isTeam = !!params.p_is_team_award;
+        const token = isTeam ? `TMC-TEAM-${rnd()}-${rnd()}` : `TMC-${rnd()}-${rnd()}-${rnd()}`;
+        const code = isTeam ? `CERT-TEAM-${rnd()}${rnd()}` : `CERT-${rnd()}${rnd()}`;
         const ty=db.types.find(t=>t.id===params.p_type_id);
+        const recipientName = params.p_recipient || (isTeam ? (params.p_team_name || 'Team Members') : 'Minecraft Creator');
+        const channelName = params.p_channel || (isTeam ? (params.p_team_name || 'Community Team') : 'Community Member');
         const newCert={
           id:'cert-'+Date.now(),
           cert_code:code,
           token,
-          recipient_name:params.p_recipient,
-          channel_name:params.p_channel,
-          award:params.p_award,
+          recipient_name:recipientName,
+          channel_name:channelName,
+          award:params.p_award || (isTeam ? 'Team Championship Award' : 'Community Award'),
           award_ta:params.p_award_ta||'',
-          heading:params.p_heading||(ty?ty.heading:'Certificate of Achievement'),
-          heading_ta:params.p_heading_ta||(ty?ty.heading_ta:'சாதனைச் சான்றிதழ்'),
+          heading:params.p_heading||(isTeam ? 'Official Team Achievement Certificate' : (ty?ty.heading:'Certificate of Achievement')),
+          heading_ta:params.p_heading_ta||(isTeam ? 'அதிகாரப்பூர்வ குழு சாதனைச் சான்றிதழ்' : (ty?ty.heading_ta:'சாதனைச் சான்றிதழ்')),
           content_title:params.p_content_title||'',
           content_url:params.p_content_url||'',
-          message:params.p_message||'',
+          message:params.p_message||(isTeam ? 'Honouring outstanding team collaboration in the Tamil Minecraft Community.' : ''),
           theme:params.p_theme||'emerald',
-          icon:params.p_icon||(ty?ty.icon:'star'),
-          type_name:ty?(ty.name||''):'Custom Award',
+          icon:params.p_icon||(ty?ty.icon:(isTeam ? 'shield' : 'star')),
+          type_name:isTeam ? 'Team Award' : (ty?(ty.name||''):'Custom Award'),
           custom_logo_url:params.p_custom_logo_url||null,
           team_members:params.p_team_members||null,
           team_name:params.p_team_name||null,
           issuer_signature:params.p_issuer_signature||null,
-          badge_text:params.p_badge_text||null,
-          is_team_award:!!params.p_is_team_award,
+          badge_text:params.p_badge_text||(isTeam ? 'TEAM CERTIFICATE' : null),
+          is_team_award:isTeam,
           status:'unused',
           user_id:null,
           issued_at:new Date().toISOString()
@@ -450,10 +501,137 @@ function createFallbackClient(){
         setTimeout(()=>callback(db.session?'SIGNED_IN':'SIGNED_OUT',db.session),0);
         return {data:{subscription:{unsubscribe:()=>{authListeners=authListeners.filter(x=>x!==callback)}}}};
       },
-      signUp:async({email})=>{
-        db=loadDb();const user={id:'u-'+Date.now(),email,created_at:new Date().toISOString()};
-        const session={user,access_token:'mock-token'};
-        db.users.push(user);db.session=session;saveDb(db);notifyAuth('SIGNED_IN',session);
+      connectWithDiscord:async(discordUser)=>{
+        db=loadDb();
+        const dUser = discordUser;
+        const dcUsername = (typeof dUser==='object' ? (dUser?.username || dUser?.tag || dUser?.login) : dUser) || 'DiscordUser';
+        const dcId = (typeof dUser==='object' ? (dUser?.discord_id || dUser?.id) : '') || ('dc_' + Date.now());
+        const dcAvatar = (typeof dUser==='object' ? dUser?.avatar_url : '') || '';
+        const dcUrl = dcId ? `https://discord.com/users/${encodeURIComponent(dcId)}` : `https://discord.com/users/${encodeURIComponent(dcUsername)}`;
+        const email = `${dcUsername.toLowerCase().replace(/[^a-z0-9_]/g,'')}@discord.tmcawards.org`;
+        
+        let user = db.users.find(u => (u.discord_id && String(u.discord_id) === String(dcId)) || (u.discord_username && u.discord_username.toLowerCase() === dcUsername.toLowerCase()));
+        if (!user) {
+          user = {
+            id: 'u-dc-' + (String(dcId).replace(/[^a-zA-Z0-9_-]/g,'') || Date.now()),
+            email,
+            discord_id: dcId,
+            discord_username: dcUsername,
+            discord_avatar_url: dcAvatar,
+            discord_verified: true,
+            created_at: new Date().toISOString()
+          };
+          db.users.push(user);
+        } else {
+          user.discord_username = dcUsername;
+          user.discord_id = dcId;
+          if (dcAvatar) user.discord_avatar_url = dcAvatar;
+          user.discord_verified = true;
+        }
+
+        const session = { user, access_token: 'dc-token-' + Date.now() };
+
+        let profile = db.profiles.find(p => p.id === user.id || (p.discord_username && p.discord_username.toLowerCase() === dcUsername.toLowerCase()));
+        if (!profile) {
+          const rawHandle = dcUsername.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24);
+          const handle = (rawHandle && rawHandle.length >= 3) ? rawHandle : ('creator_' + Date.now().toString().slice(-4));
+          profile = {
+            id: user.id,
+            handle,
+            display_name: (typeof dUser === 'object' && (dUser?.display_name || dUser?.global_name || dUser?.name)) || dcUsername,
+            channel_name: '@' + dcUsername,
+            channel_url: dcUrl,
+            avatar_url: dcAvatar,
+            discord_username: dcUsername,
+            discord_id: dcId,
+            discord_verified: true,
+            social_links: [{ platform: 'discord', url: dcUrl }],
+            bio: (typeof dUser === 'object' && dUser?.bio) || 'Tamil Minecraft Community Creator',
+            category: 'Survival',
+            likes: 0,
+            votes: 0,
+            cert_count: 1,
+            has_welcome: true,
+            is_hidden: false,
+            created_at: user.created_at
+          };
+
+          const rnd = () => Math.random().toString(36).substring(2, 6).toUpperCase();
+          const welcomeCode = `CERT-TMC-WELCOME-${rnd()}`;
+          const welcomeCert = {
+            id: 'cert-welcome-' + Date.now(),
+            cert_code: welcomeCode,
+            token: `TMC-WELCOME-${rnd()}`,
+            recipient_name: profile.display_name,
+            channel_name: profile.channel_name,
+            award: 'Welcome to Tamil MC Community',
+            award_ta: 'தமிழ் MC சமூக வரவேற்பு',
+            heading: 'Community Welcome Certificate',
+            heading_ta: 'சமூக வரவேற்புச் சான்றிதழ்',
+            content_title: 'Official Member of TMC Awards',
+            content_url: profile.channel_url || '',
+            message: 'Welcome to the Tamil Minecraft community! Official certified creator of TMC Awards.',
+            theme: 'emerald',
+            icon: 'shield',
+            type_name: 'Community Welcome',
+            status: 'redeemed',
+            user_id: user.id,
+            is_welcome: true,
+            issued_at: new Date().toISOString()
+          };
+          db.certs.unshift(welcomeCert);
+          db.profiles.push(profile);
+        } else {
+          profile.discord_verified = true;
+          if (dcAvatar && !profile.avatar_url) profile.avatar_url = dcAvatar;
+          if (!profile.discord_username) profile.discord_username = dcUsername;
+        }
+
+        db.session = session;
+        saveDb(db);
+        try { localStorage.setItem('tmc_auth_session', JSON.stringify(session)); } catch(e){}
+        notifyAuth('SIGNED_IN', session);
+        return { data: { user, session, profile }, error: null };
+      },
+      signUp:async({email, discord_user, discord_avatar, github_user, github_avatar})=>{
+        db=loadDb();
+        const dUser = discord_user || github_user;
+        const dAvatar = discord_avatar || github_avatar;
+        const dcUsername = (typeof dUser==='object' ? (dUser?.username || dUser?.tag || dUser?.login) : dUser) || null;
+        const dcAvatar = (typeof dUser==='object' ? dUser?.avatar_url : dAvatar) || null;
+        const dcUrl = dcUsername ? `https://discord.com/users/${encodeURIComponent(dcUsername)}` : '';
+        const user={
+          id:'u-'+Date.now(),
+          email,
+          discord_username: dcUsername,
+          discord_avatar_url: dcAvatar,
+          discord_verified: Boolean(dcUsername),
+          created_at:new Date().toISOString()
+        };
+        const session={user,access_token:'mock-token-'+Date.now()};
+        db.users.push(user);
+        // Create initial creator profile linked with verified Discord
+        const newProfile={
+          id:user.id,
+          display_name: (typeof dUser==='object'&&(dUser?.display_name||dUser?.global_name||dUser?.name)) || dcUsername || email.split('@')[0],
+          channel_name: dcUsername ? ('@'+dcUsername) : 'Community Member',
+          channel_url: dcUrl,
+          avatar_url: dcAvatar || '',
+          discord_username: dcUsername,
+          discord_verified: Boolean(dcUsername),
+          social_links: dcUrl ? [{platform:'discord',url:dcUrl}] : [],
+          bio: (typeof dUser==='object'&&dUser?.bio) || 'Tamil Minecraft Community Creator',
+          category:'Survival',
+          likes:0,
+          votes:0,
+          cert_count:0,
+          is_hidden:false,
+          created_at:user.created_at
+        };
+        const pIdx=db.profiles.findIndex(p=>p.id===user.id);
+        if(pIdx>=0) db.profiles[pIdx]={...db.profiles[pIdx],...newProfile};
+        else db.profiles.push(newProfile);
+        db.session=session;saveDb(db);notifyAuth('SIGNED_IN',session);
         return {data:{user,session},error:null};
       },
       signInWithPassword:async({email,password})=>{
@@ -521,7 +699,22 @@ window.THEMES={
   netherite:{label:'Netherite',bg:'#2a2528',frame:'#6b5a5f',accent:'#c9a97a',ink:'#f1e8e4',sub:'#c7b9b3'}
 };
 window.fmtDate=d=>d?new Date(d).toISOString().slice(0,10):'';
-function wrap(ctx,text,x,y,maxW,lh){let line='';for(const w of text.split(' ')){const t=line?line+' '+w:w;if(ctx.measureText(t).width>maxW&&line){ctx.fillText(line,x,y);line=w;y+=lh}else line=t}ctx.fillText(line,x,y)}
+
+function wrap(ctx,text,x,y,maxW,lh){
+  if(!text) return;
+  let line='';
+  const str = String(text);
+  for(const w of str.split(' ')){
+    const t=line?line+' '+w:w;
+    if(ctx.measureText(t).width>maxW&&line){
+      ctx.fillText(line,x,y);
+      line=w;
+      y+=lh;
+    } else line=t;
+  }
+  if(line) ctx.fillText(line,x,y);
+}
+
 const SPRITES={
   star:['....#....','....#....','...###...','#########','.#######.','..#####..','..##.##..','.##...##.','.#.....#.'],
   trophy:['#########','#.#####.#','#.#####.#','.#######.','..#####..','...###...','....#....','...###...','..#####..'],
@@ -530,47 +723,127 @@ const SPRITES={
   gem:['..#####..','.#######.','#########','#########','.#######.','..#####..','...###...','....#....','.........']
 };
 window.ICONS=Object.keys(SPRITES);
+
 window.certField=(c,k)=>{
-  const ta=lang()==='ta';
-  if(k==='award')return (ta&&c.award_ta)||(I18N[lang()]['award.'+c.award])||c.award;
+  if(!c) return '';
+  const ta=typeof lang==='function'&&lang()==='ta';
+  if(k==='award')return (ta&&c.award_ta)||(I18N&&I18N[lang()]&&I18N[lang()]['award.'+c.award])||c.award||'';
   const main=ta?(c.heading_ta||c.heading||t('cert.title')):(c.heading||t('cert.title'));
   let sub=ta?(c.heading||''):(c.heading_ta||t('cert.ta'));
   if(sub===main)sub='';
   return k==='heading'?main:sub;
 };
+
+const certLogoCache={};
+function loadCertLogo(url){
+  const src=url||'/logo.png';
+  if(certLogoCache[src]&&certLogoCache[src].complete&&certLogoCache[src].naturalWidth>0){
+    return Promise.resolve(certLogoCache[src]);
+  }
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>{certLogoCache[src]=img;resolve(img)};
+    img.onerror=()=>{resolve(null)};
+    img.src=src;
+    setTimeout(()=>resolve(img.complete&&img.naturalWidth>0?img:null),300);
+  });
+}
+
 window.drawCert=async function(canvas,c,themeKey){
-  if(!canvas)return;
-  const th=THEMES[themeKey]||THEMES.emerald,ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
-  try{await Promise.all([document.fonts.load('800 60px Outfit'),document.fonts.load('700 40px "Noto Sans Tamil"'),document.fonts.load('500 30px Outfit')])}catch(e){}
+  if(!canvas||!c)return;
+  const th=THEMES[themeKey]||THEMES[c.theme]||THEMES.emerald;
+  const ctx=canvas.getContext('2d');
+  if(!ctx) return;
+  const W=canvas.width||1600,H=canvas.height||1130;
+
+  // Strict font loading timeout so canvas never hangs
+  try{
+    if(document.fonts&&document.fonts.load){
+      await Promise.race([
+        Promise.all([
+          document.fonts.load('800 60px Outfit'),
+          document.fonts.load('700 40px "Noto Sans Tamil"'),
+          document.fonts.load('500 30px Outfit')
+        ]),
+        new Promise(r=>setTimeout(r,250))
+      ]);
+    }
+  }catch(e){}
+
   ctx.fillStyle=th.bg;ctx.fillRect(0,0,W,H);
   const s=28;
   for(let x=0;x<W;x+=s)for(let k=0;k<2;k++){ctx.fillStyle=(x/s)%2?th.frame:th.accent;ctx.fillRect(x,k?H-s:0,s,s)}
   for(let y=s;y<H-s;y+=s)for(let k=0;k<2;k++){ctx.fillStyle=(y/s)%2?th.frame:th.accent;ctx.fillRect(k?W-s:0,y,s,s)}
   ctx.strokeStyle=th.frame;ctx.lineWidth=4;ctx.strokeRect(s+22,s+22,W-2*(s+22),H-2*(s+22));
   ctx.textAlign='center';
-  ctx.fillStyle=th.frame;ctx.font='700 30px Outfit, "Noto Sans Tamil", sans-serif';ctx.fillText(t('cert.org'),W/2,165);
-  const sub=certField(c,'sub'),main=certField(c,'heading');
-  if(sub){ctx.fillStyle=th.ink;ctx.font='700 44px "Noto Sans Tamil", Outfit, sans-serif';ctx.fillText(sub,W/2,245)}
-  let hs=76;ctx.fillStyle=th.ink;
+  ctx.fillStyle=th.frame;ctx.font='700 30px Outfit, "Noto Sans Tamil", sans-serif';ctx.fillText(t('cert.org')||'Tamil Minecraft Community Awards',W/2,165);
+  const sub=certField(c,'sub'),main=certField(c,'heading')||'Certificate of Achievement';
+  if(sub){ctx.fillStyle=th.ink;ctx.font='700 44px "Noto Sans Tamil", Outfit, sans-serif';ctx.fillText(sub,W/2,238)}
+  let hs=74;ctx.fillStyle=th.ink;
   do{ctx.font='800 '+hs+'px Outfit, "Noto Sans Tamil", sans-serif';hs-=3}while(ctx.measureText(main).width>W-300&&hs>34);
-  ctx.fillText(main,W/2,350);
-  ctx.fillStyle=th.sub;ctx.font='500 30px Outfit, "Noto Sans Tamil", sans-serif';ctx.fillText(t('cert.presented'),W/2,430);
-  let size=110;ctx.fillStyle=th.frame;
-  const rName = c.recipient_name || t('cert.sample.n');
+  ctx.fillText(main,W/2,332);
+
+  ctx.fillStyle=th.sub;ctx.font='500 28px Outfit, "Noto Sans Tamil", sans-serif';ctx.fillText(t('cert.presented')||'Presented to',W/2,390);
+
+  // Logo On Certificate directly above recipient name
+  const logoUrl=c.custom_logo_url||'/logo.png';
+  const logoImg=await loadCertLogo(logoUrl);
+  const logoSize=88,logoX=W/2-logoSize/2,logoY=412;
+
+  ctx.save();
+  // Circular themed medallion background
+  ctx.fillStyle=th.bg;
+  ctx.beginPath();
+  ctx.arc(W/2,logoY+logoSize/2,logoSize/2+6,0,Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle=th.frame;
+  ctx.lineWidth=3.5;
+  ctx.stroke();
+  ctx.strokeStyle=th.accent;
+  ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.arc(W/2,logoY+logoSize/2,logoSize/2+2.5,0,Math.PI*2);
+  ctx.stroke();
+
+  if(logoImg&&logoImg.naturalWidth>0){
+    ctx.beginPath();
+    ctx.arc(W/2,logoY+logoSize/2,logoSize/2-1,0,Math.PI*2);
+    ctx.clip();
+    ctx.drawImage(logoImg,logoX,logoY,logoSize,logoSize);
+  }else{
+    // High-res pixel emblem fallback
+    ctx.fillStyle=th.accent;
+    ctx.beginPath();
+    ctx.arc(W/2,logoY+logoSize/2,logoSize/2-1,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='#ffffff';
+    ctx.font='800 32px Outfit, sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('TMC',W/2,logoY+logoSize/2+11);
+  }
+  ctx.restore();
+
+  let size=105;ctx.fillStyle=th.frame;
+  const rName = c.recipient_name || t('cert.sample.n') || 'Minecraft Creator';
   do{ctx.font='800 '+size+'px Outfit, "Noto Sans Tamil", sans-serif';size-=4}while(ctx.measureText(rName).width>W-340&&size>40);
-  ctx.fillText(rName,W/2,550);
-  ctx.fillStyle=th.accent;ctx.fillRect(W/2-260,585,520,6);
+  ctx.fillText(rName,W/2,558);
+  ctx.fillStyle=th.accent;ctx.fillRect(W/2-260,592,520,6);
   ctx.fillStyle=th.sub;ctx.font='500 30px Outfit, "Noto Sans Tamil", sans-serif';
-  ctx.fillText(t('cert.for')+' '+(c.channel_name || t('cert.sample.c')),W/2,650);
-  const aw=certField(c,'award');let as=62;ctx.fillStyle=th.ink;
+  ctx.fillText((t('cert.for')||'For channel')+' '+(c.channel_name || t('cert.sample.c') || 'Community Member'),W/2,652);
+  const aw=certField(c,'award')||'Community Award';let as=62;ctx.fillStyle=th.ink;
   do{ctx.font='800 '+as+'px Outfit, "Noto Sans Tamil", sans-serif';as-=3}while(ctx.measureText(aw).width>W-300&&as>30);
   ctx.fillText(aw,W/2,745);
-  // Optional Custom Logo
+
+  // Optional Custom Logo with fast timeout
   if(c.custom_logo_url){
     try{
       const img=new Image();img.crossOrigin='anonymous';
-      await new Promise(r=>{img.onload=r;img.onerror=r;img.src=c.custom_logo_url});
-      if(img.width>0){
+      await Promise.race([
+        new Promise(r=>{img.onload=r;img.onerror=r;img.src=c.custom_logo_url}),
+        new Promise(r=>setTimeout(r,350))
+      ]);
+      if(img.complete && img.naturalWidth>0){
         ctx.save();ctx.fillStyle=th.accent;ctx.fillRect(115,80,110,110);ctx.fillStyle=th.bg;ctx.fillRect(119,84,102,102);ctx.drawImage(img,120,85,100,100);ctx.restore();
       }
     }catch(e){}
@@ -583,22 +856,94 @@ window.drawCert=async function(canvas,c,themeKey){
 
   let y=800;
   ctx.fillStyle=th.sub;ctx.font='500 26px Outfit, "Noto Sans Tamil", sans-serif';
-  if(c.content_title){wrap(ctx,t('cert.content')+' '+c.content_title,W/2,y,W-460,40);y+=44}
+  if(c.content_title){wrap(ctx,(t('cert.content')||'Content:')+' '+c.content_title,W/2,y,W-460,40);y+=44}
   if(c.team_name){ctx.fillStyle=th.frame;ctx.font='700 26px Outfit, "Noto Sans Tamil", sans-serif';ctx.fillText('Team: '+c.team_name,W/2,y);y+=38}
   if(c.team_members){ctx.fillStyle=th.ink;ctx.font='600 24px Outfit, "Noto Sans Tamil", sans-serif';wrap(ctx,'👥 Team Members: '+c.team_members,W/2,y,W-460,34);y+=44}
   if(c.message){wrap(ctx,c.message,W/2,y,W-460,36)}
-  // pixel icon for this certificate type
+
+  // Pixel icon
   const sp=SPRITES[c.icon]||SPRITES.shield,px=7,ox=W/2-(9*px)/2,oy=895;
   for(const [dx,col] of [[3,th.frame],[0,th.accent]])
     sp.forEach((row,r)=>[...row].forEach((ch,k)=>{if(ch==='#'){ctx.fillStyle=col;ctx.fillRect(ox+k*px+dx,oy+r*px+dx,px,px)}}));
   for(let i=0;i<3;i++){ctx.fillStyle=i%2?th.accent:th.frame;ctx.fillRect(ox-70-i*34,oy+30,20,20);ctx.fillRect(ox+9*px+50+i*34,oy+30,20,20)}
   if(c.badge_text){ctx.fillStyle=th.frame;ctx.font='700 18px Outfit, sans-serif';ctx.fillText(c.badge_text,W/2,oy+80)}
   ctx.textAlign='left';ctx.fillStyle=th.sub;ctx.font='500 24px Outfit, "Noto Sans Tamil", sans-serif';
-  ctx.fillText(t('cert.issued')+' '+fmtDate(c.issued_at),150,1020);
-  ctx.fillText(t('cert.id')+' '+(c.cert_code || 'CERT-XXXXXXXX'),150,1056);
+  ctx.fillText((t('cert.issued')||'Issued:')+' '+fmtDate(c.issued_at),150,1020);
+  ctx.fillText((t('cert.id')||'ID:')+' '+(c.cert_code || 'CERT-XXXXXXXX'),150,1056);
   ctx.textAlign='center';ctx.strokeStyle=th.ink;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W-480,1020);ctx.lineTo(W-150,1020);ctx.stroke();
   ctx.font='500 24px Outfit, "Noto Sans Tamil", sans-serif';
   ctx.fillText(c.issuer_signature||t('cert.signed')||'TMC Awards Committee',W-315,1056);
 };
-window.downloadCanvas=(canvas,name)=>canvas.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)},'image/png');
+
+// Safe, non-blocking certificate download function that never freezes the UI
+window.downloadCanvas=function(canvas,name,onComplete){
+  if(!canvas){
+    console.warn('downloadCanvas: Canvas element missing');
+    if(typeof onComplete==='function') onComplete(false);
+    return;
+  }
+  const filename = (name||'tmc_certificate.png').replace(/[^\w.-]/g,'_');
+
+  function triggerBlobDownload(blob){
+    try{
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.position = 'fixed';
+      a.style.top = '-9999px';
+      a.style.left = '-9999px';
+      a.download = filename;
+      a.href = blobUrl;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{
+        try{ a.remove(); }catch(e){}
+        try{ URL.revokeObjectURL(blobUrl); }catch(e){}
+        if(typeof onComplete==='function') onComplete(true);
+      }, 500);
+    }catch(err){
+      console.warn('Blob download trigger error:', err);
+      // Fallback: direct window location
+      if(typeof onComplete==='function') onComplete(false);
+    }
+  }
+
+  // Fast asynchronous toBlob (runs in browser worker/background thread)
+  if(typeof canvas.toBlob === 'function'){
+    try{
+      canvas.toBlob(blob => {
+        if(blob){
+          triggerBlobDownload(blob);
+        } else {
+          fallbackDataUrl();
+        }
+      }, 'image/png');
+      return;
+    }catch(e){
+      console.warn('Canvas toBlob failed:', e);
+    }
+  }
+
+  // Fallback to toDataURL
+  function fallbackDataUrl(){
+    try{
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.style.position = 'fixed';
+      a.style.top = '-9999px';
+      a.style.left = '-9999px';
+      a.download = filename;
+      a.href = dataUrl;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{
+        try{ a.remove(); }catch(e){}
+        if(typeof onComplete==='function') onComplete(true);
+      }, 500);
+    }catch(e){
+      console.warn('Canvas fallback download failed:', e);
+      if(typeof onComplete==='function') onComplete(false);
+    }
+  }
+  fallbackDataUrl();
+};
 })();
