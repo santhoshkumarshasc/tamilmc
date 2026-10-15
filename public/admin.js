@@ -455,12 +455,21 @@ $('adIconReset').onclick=async()=>{
             badge.style.color = '#ef4444';
           }
         }
-      }catch(err){
-        if(msg) setMsg(msg, err?.message || 'Test failed', 'err');
+  const copySqlBtn = $('btnCopySql');
+  if(copySqlBtn){
+    copySqlBtn.onclick = async () => {
+      try {
+        const res = await fetch('/api/supabase/sql');
+        const sqlText = await res.text();
+        await navigator.clipboard.writeText(sqlText);
+        if(msg) setMsg(msg, '✓ Complete Supabase SQL copied to clipboard! Paste and Run in Supabase SQL Editor.', 'ok');
+      } catch(err) {
+        window.open('/api/supabase/sql', '_blank');
       }
     };
   }
 })();
+
 
 
 /* ---------- certificate types ---------- */

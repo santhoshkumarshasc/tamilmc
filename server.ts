@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -59,6 +60,20 @@ app.post('/api/supabase/set-url', async (req: Request, res: Response): Promise<v
   const status = await checkSupabaseConnection();
   res.json({ success: true, status });
 });
+
+app.get('/api/supabase/sql', (_req: Request, res: Response): void => {
+  try {
+    const sqlPath = path.join(__dirname, 'supabase.sql');
+    if (fs.existsSync(sqlPath)) {
+      const sql = fs.readFileSync(sqlPath, 'utf8');
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.send(sql);
+      return;
+    }
+  } catch (e) {}
+  res.status(404).send('-- supabase.sql not found');
+});
+
 
 
 // In-memory verification codes cache with 15-minute TTL

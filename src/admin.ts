@@ -589,7 +589,22 @@ function setupSupabaseControls(): void {
       }
     };
   }
+
+  const copySqlBtn = $('btnCopySql');
+  if (copySqlBtn) {
+    copySqlBtn.onclick = async () => {
+      try {
+        const res = await fetch('/api/supabase/sql');
+        const sqlText = await res.text();
+        await navigator.clipboard.writeText(sqlText);
+        if (msg) (window as any).setMsg(msg, '✓ Complete Supabase SQL copied to clipboard! Paste and Run in Supabase SQL Editor.', 'ok');
+      } catch (err) {
+        window.open('/api/supabase/sql', '_blank');
+      }
+    };
+  }
 }
+
 
 // Initialize on DOM load
 if (typeof document !== 'undefined') {

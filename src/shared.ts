@@ -20,6 +20,17 @@ export const STORAGE_KEY = 'tmc_live_db_v3';
 
 export const INITIAL_SEED_ADMINS: AdminUser[] = [
   {
+    id: 'admin-lead-0',
+    email: 'gitsmesk@gmail.com',
+    name: 'SK (Lead Admin)',
+    role: 'super_admin',
+    password: 'ADMINOFTMC',
+    created_at: '2026-09-01T00:00:00.000Z',
+    created_by: 'system',
+    notes: 'Super Administrator Account',
+    is_active: true
+  },
+  {
     id: 'admin-lead-1',
     email: 'santhoshkumarshasc@gmail.com',
     name: 'Santhosh (Lead Admin)',
