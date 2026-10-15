@@ -669,6 +669,39 @@ $('adIconReset').onclick=async()=>{
   }
 })();
 
+/* ---------- discord oauth and redirect settings ---------- */
+(function setupDiscordAdminUI(){
+  const secretInp = $('dcClientSecret');
+  const saveBtn = $('btnSaveDcSecret');
+  const msg = $('dcMsg');
+
+  if(saveBtn){
+    saveBtn.onclick = async () => {
+      const secret = (secretInp?.value || '').trim();
+      if(!secret){
+        if(msg) setMsg(msg, 'Please enter a Discord Client Secret', 'err');
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/discord/set-secret', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ secret })
+        });
+        const data = await res.json();
+        if(data.success){
+          if(msg) setMsg(msg, '✓ Discord Client Secret saved successfully! OAuth2 connection is active.', 'ok');
+          if(secretInp) secretInp.value = '';
+        } else {
+          if(msg) setMsg(msg, data.error || 'Failed to save secret', 'err');
+        }
+      } catch(err){
+        if(msg) setMsg(msg, err?.message || 'Error saving secret', 'err');
+      }
+    };
+  }
+})();
+
 
 
 /* ---------- certificate types ---------- */

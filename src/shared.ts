@@ -897,6 +897,40 @@ export function createFallbackClient() {
         notifyAuth('SIGNED_IN', session);
         return { data: { user, session }, error: null };
       },
+      connectWithDiscord: async (discordUser: any) => {
+        db = loadDb();
+        const dUser = discordUser;
+        const dcUsername = (typeof dUser === 'object' ? (dUser?.username || dUser?.tag || dUser?.login) : dUser) || 'DiscordUser';
+        const dcId = (typeof dUser === 'object' ? (dUser?.discord_id || dUser?.id) : '') || ('dc_' + Date.now());
+        const dcAvatar = (typeof dUser === 'object' ? dUser?.avatar_url : '') || '';
+        const dcUrl = dcId ? `https://discord.com/users/${encodeURIComponent(dcId)}` : `https://discord.com/users/${encodeURIComponent(dcUsername)}`;
+        const email = `${String(dcUsername).toLowerCase().replace(/[^a-z0-9_]/g, '')}@discord.tmcawards.org`;
+
+        let user = db.users.find(u => (u.discord_id && String(u.discord_id) === String(dcId)) || (u.discord_username && u.discord_username.toLowerCase() === dcUsername.toLowerCase()));
+        if (!user) {
+          user = {
+            id: 'u-dc-' + (String(dcId).replace(/[^a-zA-Z0-9_-]/g, '') || Date.now()),
+            email,
+            discord_id: String(dcId),
+            discord_username: dcUsername,
+            discord_avatar_url: dcAvatar,
+            discord_verified: true,
+            created_at: new Date().toISOString()
+          };
+          db.users.push(user);
+        } else {
+          user.discord_username = dcUsername;
+          user.discord_id = String(dcId);
+          if (dcAvatar) user.discord_avatar_url = dcAvatar;
+          user.discord_verified = true;
+        }
+
+        const session: AuthSession = { user, access_token: 'dc-token-' + Date.now() };
+        db.session = session;
+        saveDb(db);
+        notifyAuth('SIGNED_IN', session);
+        return { data: { user, session }, error: null };
+      },
       signOut: async () => {
         db = loadDb();
         db.session = null;

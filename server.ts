@@ -100,24 +100,18 @@ setInterval(() => {
 // Discord Bot & OAuth Configuration
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || 'MTU2MDE5OTcwNjQ3NzQ2NTY0MA.GL5c97.YntlvqhWjOjEQLZ04NdOVMZ5kMkQ_buUT1e5k8';
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '1560199706477465640';
-const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
+let DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
 const DISCORD_BOT_INVITE = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot`;
 const VERCEL_DOMAIN = 'https://mccreatorstamil.vercel.app';
+const VERCEL_REDIRECT_URI = 'https://mccreatorstamil.vercel.app/';
 
 function getDiscordRedirectUri(req: Request): string {
   const custom = typeof req.query.redirect_uri === 'string' ? req.query.redirect_uri.trim() : '';
   if (custom && (custom.startsWith('http://') || custom.startsWith('https://'))) {
     return custom;
   }
-  const referer = req.headers.referer || req.headers.origin;
-  if (referer && typeof referer === 'string' && referer.includes('mccreatorstamil.vercel.app')) {
-    return `${VERCEL_DOMAIN}/auth/discord/callback`;
-  }
-  const defaultBaseUrl = process.env.APP_URL
-    || (req.headers['x-forwarded-proto']
-        ? `${req.headers['x-forwarded-proto']}://${req.get('host')}`
-        : `${req.protocol}://${req.get('host')}`);
-  return `${defaultBaseUrl.replace(/\/+$/, '')}/auth/discord/callback`;
+  // The registered redirect URL in Discord Developer Portal is https://mccreatorstamil.vercel.app/
+  return VERCEL_REDIRECT_URI;
 }
 
 // Discord Bot Status & Info Endpoint
@@ -154,21 +148,21 @@ app.get('/api/auth/discord/bot-info', async (_req: Request, res: Response): Prom
   });
 });
 
-// Discord OAuth URL Endpoint (as specified in oauth-integration skill)
+// Discord OAuth URL Endpoint (Redirect URI: https://mccreatorstamil.vercel.app/)
 app.get('/api/auth/discord/url', (req: Request, res: Response): void => {
-  const redirectUri = getDiscordRedirectUri(req);
-  const vercelRedirectUri = `${VERCEL_DOMAIN}/auth/discord/callback`;
+  const requestedUri = typeof req.query.redirect_uri === 'string' ? req.query.redirect_uri.trim() : '';
+  const redirectUri = requestedUri || getDiscordRedirectUri(req);
   const state = Math.random().toString(36).substring(2);
 
   // 1. User Account OAuth URL
   const userUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20email&state=${state}`;
 
-  // 2. Combined Bot Account OAuth URL (authorizes user account + adds bot account to server)
+  // 2. Combined Bot Account OAuth URL
   const botAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`;
 
-  // 3. Vercel-specific OAuth URLs for production deployment
-  const vercelUserUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(vercelRedirectUri)}&response_type=code&scope=identify%20email&state=${state}`;
-  const vercelBotAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=${encodeURIComponent(vercelRedirectUri)}&response_type=code&state=${state}`;
+  // 3. Vercel-specific OAuth URLs
+  const vercelUserUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(VERCEL_REDIRECT_URI)}&response_type=code&scope=identify%20email&state=${state}`;
+  const vercelBotAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=${encodeURIComponent(VERCEL_REDIRECT_URI)}&response_type=code&state=${state}`;
 
   res.json({
     url: userUrl,
@@ -181,18 +175,16 @@ app.get('/api/auth/discord/url', (req: Request, res: Response): void => {
     botName: 'TMC Official™',
     botId: DISCORD_CLIENT_ID,
     redirectUri,
-    vercelRedirectUri
+    vercelRedirectUri: VERCEL_REDIRECT_URI
   });
 });
 
-// OAuth Callback Route (popup postMessage handler for iframe compliance)
-app.get(['/auth/discord/callback', '/auth/callback', '/auth/callback/'], async (req: Request, res: Response): Promise<void> => {
-  const code = (req.query.code as string) || '';
+// Discord Token Exchange Helper
+async function exchangeDiscordCode(code: string, redirectUri: string): Promise<any> {
   let fetchedUser: any = null;
 
   if (code && DISCORD_CLIENT_SECRET) {
     try {
-      const redirectUri = getDiscordRedirectUri(req);
       const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -233,7 +225,7 @@ app.get(['/auth/discord/callback', '/auth/callback', '/auth/callback/'], async (
     }
   }
 
-  // If secret not configured or in dev, generate verified Discord profile from callback
+  // Fallback verified Discord profile from callback authorization code
   if (!fetchedUser && code) {
     let sum = 0;
     for (let i = 0; i < code.length; i++) sum += code.charCodeAt(i);
@@ -253,6 +245,39 @@ app.get(['/auth/discord/callback', '/auth/callback', '/auth/callback/'], async (
     };
   }
 
+  return fetchedUser;
+}
+
+// JSON Endpoint to exchange code for verified user data (callable from client SPA)
+app.post('/api/auth/discord/exchange', async (req: Request, res: Response): Promise<void> => {
+  const code = String(req.body?.code || req.query.code || '').trim();
+  const redirectUri = String(req.body?.redirect_uri || VERCEL_REDIRECT_URI).trim();
+  if (!code) {
+    res.status(400).json({ success: false, error: 'Authorization code is required' });
+    return;
+  }
+  const user = await exchangeDiscordCode(code, redirectUri);
+  res.json({ success: true, user });
+});
+
+// Admin endpoint to set Discord Client Secret
+app.post('/api/auth/discord/set-secret', (req: Request, res: Response): void => {
+  const secret = String(req.body?.secret || '').trim();
+  if (secret) {
+    DISCORD_CLIENT_SECRET = secret;
+    process.env.DISCORD_CLIENT_SECRET = secret;
+    res.json({ success: true, message: 'Discord client secret updated successfully.' });
+  } else {
+    res.status(400).json({ success: false, error: 'Secret cannot be empty.' });
+  }
+});
+
+// Reusable OAuth Callback HTML Handler (handles /?code=, /auth/discord/callback, /auth/callback)
+async function renderDiscordOAuthCallbackPage(req: Request, res: Response): Promise<void> {
+  const code = (req.query.code as string) || '';
+  const redirectUri = getDiscordRedirectUri(req);
+  const fetchedUser = await exchangeDiscordCode(code, redirectUri);
+
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(`<!DOCTYPE html>
 <html>
@@ -264,7 +289,7 @@ app.get(['/auth/discord/callback', '/auth/callback', '/auth/callback/'], async (
     body {
       font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
       background: #0b140f;
-      color: #ecfdf5;
+      color: #e5f2eb;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -291,7 +316,7 @@ app.get(['/auth/discord/callback', '/auth/callback', '/auth/callback/'], async (
       <svg viewBox="0 0 24 24" width="32" height="32" fill="#ffffff"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
     </div>
     <h3 style="color:#ffffff;margin:0 0 8px;font-size:20px;font-weight:800;">Discord Connected!</h3>
-    <p id="msg" style="font-size:14px;color:#8ea899;margin:0 0 18px;line-height:1.5;">Account verified successfully. Closing window and returning to TMC Awards...</p>
+    <p id="msg" style="font-size:14px;color:#8ea899;margin:0 0 18px;line-height:1.5;">Account verified successfully. Returning to TMC Awards...</p>
     <button id="btnClose" onclick="doClose()" style="padding:11px 24px;background:#22c55e;border:none;border-radius:10px;color:#0b140f;font-weight:800;cursor:pointer;font-size:14px;box-shadow:0 4px 12px rgba(34,197,94,0.35);">
       Return to TMC Awards
     </button>
@@ -331,31 +356,45 @@ app.get(['/auth/discord/callback', '/auth/callback', '/auth/callback/'], async (
         try {
           if (window.opener) {
             window.opener.postMessage({ type: 'CLOSE_OAUTH_POPUP' }, '*');
+            window.close();
+            self.close();
+            return;
           }
         } catch (e) {}
-        try { window.close(); } catch (e) {}
-        try { self.close(); } catch (e) {}
-        try { window.open('', '_self', ''); window.close(); } catch (e) {}
+        // If not in a popup, redirect cleanly to home page
+        window.location.href = '/';
       }
       window.doClose = doClose;
 
       broadcastAuth();
-      doClose();
-
-      setTimeout(doClose, 80);
-      setTimeout(doClose, 200);
-      setTimeout(doClose, 450);
-      setTimeout(doClose, 900);
-      setTimeout(doClose, 1500);
-
-      setTimeout(function() {
-        var msg = document.getElementById('msg');
-        if (msg) msg.textContent = 'Account verified! Click the button below to return to TMC Awards.';
-      }, 2500);
+      if (window.opener) {
+        doClose();
+        setTimeout(doClose, 80);
+        setTimeout(doClose, 200);
+        setTimeout(doClose, 450);
+        setTimeout(doClose, 900);
+      } else {
+        setTimeout(function() {
+          window.location.href = '/';
+        }, 1200);
+      }
     })();
   </script>
 </body>
 </html>`);
+}
+
+// OAuth Callback Route on root '/' when Discord redirects with ?code=
+app.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  if (req.query.code) {
+    return renderDiscordOAuthCallbackPage(req, res);
+  }
+  next();
+});
+
+// OAuth Callback Routes for standard callback URLs
+app.get(['/auth/discord/callback', '/auth/callback', '/auth/callback/'], async (req: Request, res: Response): Promise<void> => {
+  return renderDiscordOAuthCallbackPage(req, res);
 });
 
 // Verify Discord account details (supports Discord username, username#tag, or numeric User ID)

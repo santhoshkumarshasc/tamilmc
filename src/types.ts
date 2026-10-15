@@ -94,6 +94,10 @@ export interface UserAccount {
   created_at: string;
   is_admin?: boolean;
   name?: string;
+  discord_id?: string;
+  discord_username?: string;
+  discord_avatar_url?: string;
+  discord_verified?: boolean;
 }
 
 export interface AdminUser {

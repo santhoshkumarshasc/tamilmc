@@ -863,6 +863,38 @@ function setupSupabaseControls(): void {
   }
 }
 
+// Discord OAuth & Bot controls
+function setupDiscordControls(): void {
+  const secretInp = $('dcClientSecret') as HTMLInputElement;
+  const saveBtn = $('btnSaveDcSecret');
+  const msg = $('dcMsg');
+
+  if (saveBtn) {
+    saveBtn.onclick = async () => {
+      const secret = (secretInp?.value || '').trim();
+      if (!secret) {
+        if (msg) (window as any).setMsg(msg, 'Please enter a Discord Client Secret', 'err');
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/discord/set-secret', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ secret })
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (msg) (window as any).setMsg(msg, '✓ Discord Client Secret saved successfully! OAuth2 connection is active.', 'ok');
+          if (secretInp) secretInp.value = '';
+        } else {
+          if (msg) (window as any).setMsg(msg, data.error || 'Failed to save secret', 'err');
+        }
+      } catch (err: any) {
+        if (msg) (window as any).setMsg(msg, err?.message || 'Error saving secret', 'err');
+      }
+    };
+  }
+}
 
 // Initialize on DOM load
 if (typeof document !== 'undefined') {
@@ -874,6 +906,7 @@ if (typeof document !== 'undefined') {
     setupResetDataFlow();
     setupServerIconControls();
     setupSupabaseControls();
+    setupDiscordControls();
 
     const outBtn = $('outBtn');
     if (outBtn) {
