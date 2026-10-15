@@ -31,9 +31,9 @@
         <span class="logo-sub">Admin Panel</span>
       </span>
     </a>
-    <a href="/" class="btn small admin-back-btn">← Site</a>
+    <a href="/" class="btn small admin-back-btn desktop-only">← Site</a>
   </div>
-  <div class="admin-nav-right">
+  <div class="admin-nav-right desktop-only">
     <span class="admin-timer-pill hide" id="admSessionTimer">
       ⏱ <b id="admTimeLeft">05:00</b>
     </span>
@@ -44,7 +44,81 @@
     <button class="lang" id="langBtn" aria-label="Language">தமிழ்</button>
     <button class="btn small hide" id="outBtn" data-i18n="auth.out">Sign out</button>
   </div>
+
+  <!-- Mobile Hamburger Button -->
+  <button class="hamburger-btn mobile-only" id="adminNavToggle" aria-label="Toggle admin navigation menu" aria-expanded="false" aria-controls="adminMobileNav">
+    <span class="hamburger-bar"></span>
+    <span class="hamburger-bar"></span>
+    <span class="hamburger-bar"></span>
+  </button>
 </div></nav>
+
+<!-- Admin Mobile Navigation Drawer -->
+<div class="mobile-drawer hide" id="adminMobileNav" role="dialog" aria-modal="true" aria-label="Admin Navigation">
+  <div class="mobile-drawer-backdrop" id="adminMobileNavBackdrop"></div>
+  <div class="mobile-drawer-content">
+    <div class="mobile-drawer-head">
+      <span class="mobile-drawer-title">TMC Admin Panel</span>
+      <button class="icon-btn" id="adminMobileNavClose" aria-label="Close menu">✕</button>
+    </div>
+    <div class="mobile-drawer-links" id="adminMobileLinks">
+      <button type="button" class="mobile-nav-link active" data-admin-tab="certs">
+        <span class="mn-icon">📜</span>
+        <span data-i18n="ad.tab.certs">Certificates</span>
+      </button>
+      <button type="button" class="mobile-nav-link" data-admin-tab="creators">
+        <span class="mn-icon">👤</span>
+        <span data-i18n="ad.tab.creators">Profiles</span>
+      </button>
+      <button type="button" class="mobile-nav-link" data-admin-tab="users">
+        <span class="mn-icon">👥</span>
+        <span data-i18n="ad.tab.users">User Accounts</span>
+      </button>
+      <button type="button" class="mobile-nav-link" data-admin-tab="types">
+        <span class="mn-icon">🏷️</span>
+        <span data-i18n="ad.tab.types">Certificate types</span>
+      </button>
+      <button type="button" class="mobile-nav-link" data-admin-tab="announcements">
+        <span class="mn-icon">📢</span>
+        <span>Announcements</span>
+      </button>
+      <button type="button" class="mobile-nav-link" data-admin-tab="admins">
+        <span class="mn-icon">🛡️</span>
+        <span data-i18n="ad.tab.admins">Administrators</span>
+      </button>
+      <button type="button" class="mobile-nav-link" data-admin-tab="settings">
+        <span class="mn-icon">⚙️</span>
+        <span data-i18n="ad.tab.settings">Server Icon & Settings</span>
+      </button>
+      <a href="/" class="mobile-nav-link" style="color:var(--em);">
+        <span class="mn-icon">🌐</span>
+        <span>View Public Site →</span>
+      </a>
+    </div>
+
+    <div class="mobile-drawer-divider"></div>
+
+    <div class="mobile-drawer-controls">
+      <button class="mobile-opt-btn" id="mAdminThemeBtn" aria-label="Toggle theme">
+        <span class="m-opt-left">
+          <span class="theme-icon-light">☀️ Light mode</span>
+          <span class="theme-icon-dark">🌙 Dark mode</span>
+        </span>
+        <span class="theme-pill">Theme</span>
+      </button>
+      <button class="mobile-opt-btn" id="mAdminLangBtn" aria-label="Toggle language">
+        <span class="m-opt-left">🌐 Language</span>
+        <span class="theme-pill" id="mAdminLangVal">தமிழ்</span>
+      </button>
+    </div>
+
+    <div class="mobile-drawer-footer">
+      <button class="btn" id="mAdminOutBtn" style="width:100%;background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.35);color:#ef4444;font-weight:700;">
+        Sign Out
+      </button>
+    </div>
+  </div>
+</div>
 
 <main class="wrap" style="padding-top:36px;padding-bottom:60px">
 
@@ -101,6 +175,7 @@
     <button class="chip" data-tab="creators" aria-pressed="false" data-i18n="ad.tab.creators">Profiles</button>
     <button class="chip" data-tab="users" aria-pressed="false" data-i18n="ad.tab.users">User Accounts</button>
     <button class="chip" data-tab="types" aria-pressed="false" data-i18n="ad.tab.types">Certificate types</button>
+    <button class="chip" data-tab="announcements" aria-pressed="false" data-i18n="ad.tab.announcements">📢 Announcements</button>
     <button class="chip" data-tab="admins" aria-pressed="false" data-i18n="ad.tab.admins">Administrators</button>
     <button class="chip" data-tab="settings" aria-pressed="false" data-i18n="ad.tab.settings">Server Icon & Settings</button>
   </div>
@@ -225,6 +300,94 @@
       <div>
         <div class="canvas-box glass"><canvas class="cv" id="tCert" width="1600" height="1130" aria-label="Type preview"></canvas></div>
         <div class="panel glass" style="margin-top:22px"><div id="typeList"></div></div>
+      </div>
+    </div>
+  <!-- TAB: ANNOUNCEMENTS -->
+  <div id="tab-announcements" class="hide">
+    <div class="split">
+      <div class="panel glass">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <span style="font-size:24px;">📢</span>
+          <div>
+            <h3 style="margin:0;">Create / Edit Announcement</h3>
+            <p class="note" style="margin:2px 0 0;font-size:13px;">Broadcast banners directly to all visitors on the TMC Awards homepage.</p>
+          </div>
+        </div>
+
+        <div class="form">
+          <input type="hidden" id="annId">
+          <div>
+            <label for="annTitle">Announcement Title <span style="color:#ef4444">*</span></label>
+            <input id="annTitle" maxlength="80" placeholder="e.g. TMC Best Creator Voting Now Live! 🎉" style="font-weight:700;">
+          </div>
+          <div>
+            <label for="annMessage">Announcement Message <span style="color:#ef4444">*</span></label>
+            <textarea id="annMessage" maxlength="240" rows="3" placeholder="Enter the description or announcement details to show visitors..."></textarea>
+          </div>
+          <div class="row2">
+            <div>
+              <label for="annBadge">Badge Label</label>
+              <input id="annBadge" maxlength="24" placeholder="e.g. 📢 NOTICE, 🎉 LIVE, 🏆 EVENT">
+            </div>
+            <div>
+              <label for="annBadgeColor">Badge Color / Tone</label>
+              <select id="annBadgeColor">
+                <option value="emerald">Emerald (Green / Standard)</option>
+                <option value="gold">Gold (Amber / Celebration)</option>
+                <option value="diamond">Diamond (Cyan / Important)</option>
+                <option value="netherite">Netherite (Dark / Neutral)</option>
+                <option value="danger">Danger (Red / Urgent Alert)</option>
+              </select>
+            </div>
+          </div>
+          <div class="row2">
+            <div>
+              <label for="annLinkUrl">Action Link URL (optional)</label>
+              <input id="annLinkUrl" placeholder="e.g. #showcase or https://youtube.com/@tamilmc" maxlength="160">
+            </div>
+            <div>
+              <label for="annLinkText">Action Link Text (optional)</label>
+              <input id="annLinkText" placeholder="e.g. Vote Now →" maxlength="40">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;margin:4px 0 10px;">
+            <input type="checkbox" id="annActive" checked style="width:18px;height:18px;accent-color:var(--em);cursor:pointer;">
+            <label for="annActive" style="margin:0;font-weight:700;cursor:pointer;">Active (Display on Homepage)</label>
+          </div>
+
+          <div id="annOutMsg" class="msg hide" role="status"></div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="btn primary" id="annSaveBtn">Publish Announcement</button>
+            <button type="button" class="btn" id="annResetBtn">Clear Form</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel glass" style="margin-bottom:20px;">
+          <h4 style="margin:0 0 12px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Live Preview (Homepage Banner)</h4>
+          <div id="annPreviewBox" style="padding:14px 18px;border-radius:14px;background:var(--surface-inset);border:1.5px solid var(--line);box-shadow:var(--neu-inset-sm);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+              <span id="prevBadge" style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:9999px;background:var(--em-soft);color:var(--em);border:1px solid rgba(34,197,94,0.3);">
+                📢 ANNOUNCEMENT
+              </span>
+              <span id="prevActiveStatus" style="font-size:11px;font-weight:700;color:var(--em);">● Active</span>
+            </div>
+            <b id="prevTitle" style="font-size:15px;display:block;margin-bottom:4px;color:var(--text);">Welcome to TMC Awards 2026! 🎮</b>
+            <p id="prevMsg" style="font-size:13px;color:var(--muted);margin:0 0 10px;line-height:1.4;">
+              Tamil Minecraft Creators showcase & awards voting is now officially open! Connect your Discord to build your profile, showcase your channel, and cast your vote.
+            </p>
+            <div id="prevActionBtn" style="display:inline-block;">
+              <span class="btn small primary" style="pointer-events:none;padding:5px 12px;font-size:12px;">Browse Creators →</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel glass">
+          <h3 style="margin:0 0 12px;font-size:18px;">All Announcements</h3>
+          <div id="annListContainer"></div>
+        </div>
       </div>
     </div>
   </div>

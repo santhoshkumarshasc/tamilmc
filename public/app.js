@@ -302,10 +302,46 @@ function renderGrid(){
 }
 $('search').oninput=e=>{q=e.target.value.trim().toLowerCase();renderGrid()};
 
+async function loadAnnouncement(){
+  try {
+    const {data}=await sb.rpc('get_active_announcement');
+    const banner=$('announcementBanner');
+    if(!banner) return;
+    if(!data || !data.is_active){
+      banner.classList.add('hide');
+      banner.innerHTML='';
+      return;
+    }
+    const color=data.badge_color||'emerald';
+    const actionBtn=data.link_url?`<a href="${esc(data.link_url)}" class="btn small primary" style="flex:none;white-space:nowrap;padding:7px 14px;font-size:12px;">${esc(data.link_text||'View →')}</a>`:'';
+    banner.innerHTML=`
+      <div class="announcement-card glass" style="padding:12px 18px;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border:1.5px solid var(--line);box-shadow:var(--neu-shadow-sm);">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:240px;">
+          <span style="font-size:11px;font-weight:800;letter-spacing:0.06em;padding:4px 10px;border-radius:9999px;background:var(--em-soft);color:var(--em);border:1px solid rgba(34,197,94,0.3);flex:none;">
+            ${esc(data.badge||'📢 ANNOUNCEMENT')}
+          </span>
+          <div style="flex:1;">
+            <b style="font-size:14px;color:var(--text);display:block;margin-bottom:2px;">${esc(data.title)}</b>
+            <span style="font-size:13px;color:var(--muted);line-height:1.4;display:block;">${esc(data.message)}</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex:none;">
+          ${actionBtn}
+          <button type="button" class="icon-btn" id="btnCloseAnn" aria-label="Dismiss" style="font-size:13px;width:26px;height:26px;border-radius:8px;cursor:pointer;">✕</button>
+        </div>
+      </div>
+    `;
+    banner.classList.remove('hide');
+    const btnClose=$('btnCloseAnn');
+    if(btnClose) btnClose.onclick=()=>{ banner.classList.add('hide'); };
+  } catch(e){}
+}
+
 async function loadPublic(){
   const {data,error}=await sb.from('public_profiles').select('*').order('likes',{ascending:false}).limit(500);
   list=error?[]:data;
   renderGrid();
+  loadAnnouncement();
 }
 async function like(id){
   if(!session)return openAuth();
@@ -456,102 +492,67 @@ $('heroJoin').onclick=()=>{
   }
 };
 let connectedDiscordUser = null;
-let discordDmCodeSent = false;
-let discordDmCodeVerified = false;
-let currentDmCode = '';
 
-function setupDiscordAuthControls(){
-  const btnVerify = $('btnVerifyDiscord') || $('btnVerifyGithub');
-  const btnOAuth = $('btnOAuthDiscord') || $('btnOAuthGithub');
-  const btnChange = $('btnChangeDiscord') || $('btnChangeGithub');
-  const btnSendDm = $('btnSendDiscordDm') || $('btnSendGithubDm');
-  const btnAutoFill = $('btnAutoFillDmCode');
-  const btnCopy = $('btnCopyDmCode');
-  const btnVerifyDm = $('btnVerifyDmCode');
-  const userIn = $('aDiscordUser') || $('aGithubUser');
-  const codeIn = $('aConfirmCode');
-  const statusEl = $('discordCodeStatus') || $('githubCodeStatus');
-
-  async function connectDiscord(username){
-    const raw = (username || (userIn ? userIn.value : '')).trim().replace(/^@/, '');
-    if(!raw){
-      setMsg($('aMsg'), t('a.discord_user_req') || 'Please enter your Discord username.', 'err');
-      return;
+window.oauthPopup = null;
+window.closeOAuthPopup = function(){
+  try {
+    if(window.oauthPopup && !window.oauthPopup.closed){
+      window.oauthPopup.close();
     }
-    if(btnVerify) btnVerify.disabled = true;
+  } catch(e){}
+  let attempts = 0;
+  const poll = setInterval(() => {
+    attempts++;
     try {
-      const res = await fetch('/api/auth/discord/verify-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: raw })
-      });
-      const data = await res.json();
-      if(btnVerify) btnVerify.disabled = false;
-      if(data.success && data.user){
-        connectedDiscordUser = data.user;
-        discordDmCodeVerified = false;
-        if($('discordInputState')) $('discordInputState').classList.add('hide');
-        if($('discordConnectedState')) $('discordConnectedState').classList.remove('hide');
-        if($('githubInputState')) $('githubInputState').classList.add('hide');
-        if($('githubConnectedState')) $('githubConnectedState').classList.remove('hide');
-
-        const nameLabel = data.user.tag || data.user.username;
-        if($('discordUserLogin')) $('discordUserLogin').textContent = '@' + nameLabel;
-        if($('ghUserLogin')) $('ghUserLogin').textContent = '@' + nameLabel;
-
-        if($('discordUserAvatar')) $('discordUserAvatar').src = data.user.avatar_url;
-        if($('ghUserAvatar')) $('ghUserAvatar').src = data.user.avatar_url;
-
-        if($('discordDmNotice')) $('discordDmNotice').classList.add('hide');
-        if($('discordCodeVerifyGroup')) $('discordCodeVerifyGroup').classList.add('hide');
-        clearMsg($('aMsg'));
+      if(window.oauthPopup && !window.oauthPopup.closed){
+        window.oauthPopup.close();
       } else {
-        setMsg($('aMsg'), data.error || 'Discord user not found. Please check spelling.', 'err');
+        clearInterval(poll);
       }
     } catch(e){
-      if(btnVerify) btnVerify.disabled = false;
-      setMsg($('aMsg'), 'Could not connect to Discord. Please try again.', 'err');
+      clearInterval(poll);
     }
-  }
+    if(attempts >= 30) clearInterval(poll);
+  }, 100);
+};
 
-  if(btnVerify) btnVerify.onclick = () => connectDiscord();
-  if(userIn) userIn.onkeydown = (e) => { if(e.key==='Enter'){ e.preventDefault(); connectDiscord(); } };
-
-  let oauthPopup = null;
+function setupDiscordAuthControls(){
+  const btnOAuth = $('btnOAuthDiscord') || $('btnOAuthGithub');
   let oauthPollTimer = null;
 
   async function handleOAuthSuccess(payload){
     if(oauthPollTimer) { clearInterval(oauthPollTimer); oauthPollTimer = null; }
-    if(oauthPopup && !oauthPopup.closed) {
-      try { oauthPopup.close(); } catch(e){}
-    }
+    window.closeOAuthPopup();
     try { localStorage.removeItem('tmc_oauth_payload'); } catch(e){}
+    try { localStorage.removeItem('tmc_oauth_close'); } catch(e){}
+
+    const dlg = $('authDlg');
+    if(dlg){
+      if(typeof dlg.close === 'function') dlg.close();
+      dlg.removeAttribute('open');
+    }
 
     if(payload?.user){
       connectedDiscordUser = payload.user;
       await loginWithDiscordUser(connectedDiscordUser);
-      return;
-    }
-
-    const targetUser = (userIn && userIn.value.trim()) || 'discord_creator';
-    await connectDiscord(targetUser);
-    if(connectedDiscordUser){
-      await loginWithDiscordUser(connectedDiscordUser);
     }
   }
 
+  window.handleOAuthSuccess = handleOAuthSuccess;
+
   if(btnOAuth){
     btnOAuth.onclick = async () => {
+      clearMsg($('aMsg'));
       try {
         const redirectUri = `${window.location.origin}/auth/discord/callback`;
         const res = await fetch(`/api/auth/discord/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
         const data = await res.json();
         try { localStorage.removeItem('tmc_oauth_payload'); } catch(e){}
+        try { localStorage.removeItem('tmc_oauth_close'); } catch(e){}
 
-        oauthPopup = window.open(data.url || 'https://discord.com/channels/@me', 'discord_oauth_popup', 'width=600,height=700');
-        if(!oauthPopup){
-          const u = prompt('Please allow popups for Discord authentication, or enter your Discord username to link:', (userIn ? userIn.value : ''));
-          if(u) connectDiscord(u);
+        window.oauthPopup = window.open(data.url || 'https://discord.com/channels/@me', 'discord_oauth_popup', 'width=600,height=700');
+        if(!window.oauthPopup){
+          setMsg($('aMsg'), 'Please allow popups in your browser to authorize with Discord.', 'err');
           return;
         }
 
@@ -562,187 +563,44 @@ function setupDiscordAuthControls(){
             if(raw){
               const parsed = JSON.parse(raw);
               if(parsed && parsed.type === 'OAUTH_AUTH_SUCCESS'){
+                window.closeOAuthPopup();
                 handleOAuthSuccess(parsed);
                 return;
               }
             }
           } catch(e){}
-          if(!oauthPopup || oauthPopup.closed){
+          if(!window.oauthPopup || window.oauthPopup.closed){
             clearInterval(oauthPollTimer);
             oauthPollTimer = null;
           }
-        }, 300);
+        }, 150);
       } catch(e){
-        const u = prompt('Enter your Discord username (or username#0000) to link with TMC Awards:', (userIn ? userIn.value : ''));
-        if(u) connectDiscord(u);
-      }
-    };
-  }
-
-  if(btnChange){
-    btnChange.onclick = () => {
-      connectedDiscordUser = null;
-      discordDmCodeSent = false;
-      discordDmCodeVerified = false;
-      currentDmCode = '';
-      if($('discordConnectedState')) $('discordConnectedState').classList.add('hide');
-      if($('discordInputState')) $('discordInputState').classList.remove('hide');
-      if($('githubConnectedState')) $('githubConnectedState').classList.add('hide');
-      if($('githubInputState')) $('githubInputState').classList.remove('hide');
-      if(codeIn) codeIn.value = '';
-      if(statusEl) statusEl.classList.add('hide');
-    };
-  }
-
-  if(btnSendDm){
-    btnSendDm.onclick = async () => {
-      if(!connectedDiscordUser){
-        setMsg($('aMsg'), 'Please connect your Discord account first.', 'err');
-        return;
-      }
-      btnSendDm.disabled = true;
-      btnSendDm.textContent = 'Sending DM Code via TMC Bot...';
-      try {
-        const discordId = connectedDiscordUser.discord_id || (/^\d{17,20}$/.test(connectedDiscordUser.id) ? connectedDiscordUser.id : null);
-        const res = await fetch('/api/auth/discord/send-code', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: connectedDiscordUser.username || connectedDiscordUser.tag || connectedDiscordUser.login,
-            discord_id: discordId,
-            email: $('aEmail') ? $('aEmail').value.trim() : ''
-          })
-        });
-        const data = await res.json();
-        btnSendDm.disabled = false;
-        btnSendDm.textContent = '📨 Re-send Confirmation Code in Discord DM';
-        if(data.success){
-          discordDmCodeSent = true;
-          currentDmCode = data.code;
-          if($('discordDmNotice')) $('discordDmNotice').classList.remove('hide');
-          if($('githubDmNotice')) $('githubDmNotice').classList.remove('hide');
-          if($('discordDmCodeValue')) $('discordDmCodeValue').textContent = data.code;
-          if($('ghDmCodeValue')) $('ghDmCodeValue').textContent = data.code;
-          const timeStr = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-          if($('discordDmTime')) $('discordDmTime').textContent = timeStr;
-          if($('ghDmTime')) $('ghDmTime').textContent = timeStr;
-
-          if($('discordRealDmStatus')){
-            if(data.realDmSent){
-              $('discordRealDmStatus').style.display = 'block';
-              $('discordRealDmStatus').textContent = '✓ Direct Message delivered to your Discord inbox by Bot!';
-            } else {
-              $('discordRealDmStatus').style.display = 'block';
-              $('discordRealDmStatus').style.color = '#7983f5';
-              $('discordRealDmStatus').textContent = '💬 Code generated by Bot! (Invite bot to server or use Auto-Fill below)';
-            }
-          }
-
-          if($('discordCodeVerifyGroup')) $('discordCodeVerifyGroup').classList.remove('hide');
-          if($('githubCodeVerifyGroup')) $('githubCodeVerifyGroup').classList.remove('hide');
-          if(codeIn) codeIn.focus();
-          if(statusEl){
-            statusEl.className = 'pass-hint';
-            statusEl.textContent = data.realDmSent
-              ? '✓ Confirmation code delivered to @' + (connectedDiscordUser.tag || connectedDiscordUser.username) + ' via Discord DM!'
-              : 'Confirmation code ready for @' + (connectedDiscordUser.tag || connectedDiscordUser.username) + '. Enter it below:';
-            statusEl.classList.remove('hide');
-          }
-        } else {
-          setMsg($('aMsg'), data.error || 'Failed to dispatch Discord DM code.', 'err');
-        }
-      } catch(e){
-        btnSendDm.disabled = false;
-        btnSendDm.textContent = '📨 Send Confirmation Code in Discord DM';
-        setMsg($('aMsg'), 'Failed to dispatch confirmation code. Try again.', 'err');
-      }
-    };
-  }
-
-  if(btnAutoFill){
-    btnAutoFill.onclick = () => {
-      if(currentDmCode && codeIn){
-        codeIn.value = currentDmCode;
-        if(btnVerifyDm) btnVerifyDm.click();
-      }
-    };
-  }
-
-  if(btnCopy){
-    btnCopy.onclick = () => {
-      if(currentDmCode){
-        navigator.clipboard.writeText(currentDmCode);
-        btnCopy.textContent = 'Copied!';
-        setTimeout(() => { if(btnCopy) btnCopy.textContent = 'Copy Code'; }, 1500);
-      }
-    };
-  }
-
-  if(btnVerifyDm){
-    btnVerifyDm.onclick = async () => {
-      const code = (codeIn ? codeIn.value : '').trim();
-      if(!code || code.length !== 6){
-        if(statusEl){
-          statusEl.className = 'pass-hint mismatch';
-          statusEl.textContent = 'Please enter a 6-digit confirmation code.';
-          statusEl.classList.remove('hide');
-        }
-        return;
-      }
-      btnVerifyDm.disabled = true;
-      try {
-        const usernameVal = connectedDiscordUser ? (connectedDiscordUser.username || connectedDiscordUser.tag || connectedDiscordUser.login) : '';
-        const res = await fetch('/api/auth/discord/verify-code', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: usernameVal,
-            code: code
-          })
-        });
-        const data = await res.json();
-        btnVerifyDm.disabled = false;
-        if(data.success && data.verified){
-          discordDmCodeVerified = true;
-          if(statusEl){
-            statusEl.className = 'pass-hint match';
-            statusEl.textContent = '✓ Confirmation code verified! Entering TMC Awards...';
-            statusEl.classList.remove('hide');
-          }
-          clearMsg($('aMsg'));
-          await loginWithDiscordUser(connectedDiscordUser);
-        } else {
-          discordDmCodeVerified = false;
-          if(statusEl){
-            statusEl.className = 'pass-hint mismatch';
-            statusEl.textContent = data.error || 'Invalid confirmation code. Please check your Discord DM.';
-            statusEl.classList.remove('hide');
-          }
-        }
-      } catch(e){
-        btnVerifyDm.disabled = false;
-        if(statusEl){
-          statusEl.className = 'pass-hint mismatch';
-          statusEl.textContent = 'Verification check failed. Please try again.';
-          statusEl.classList.remove('hide');
-        }
+        setMsg($('aMsg'), 'Failed to connect to Discord authorization service. Please try again.', 'err');
       }
     };
   }
 
   // 1. Cross-origin message listener for OAuth popup completion
   window.addEventListener('message', async (event) => {
+    if(event.data?.type === 'CLOSE_OAUTH_POPUP'){
+      window.closeOAuthPopup();
+    }
     if(event.data?.type === 'OAUTH_AUTH_SUCCESS' && (event.data?.provider === 'discord' || event.data?.provider === 'github')){
+      window.closeOAuthPopup();
       await handleOAuthSuccess(event.data);
     }
   });
 
   // 2. Storage event listener (when popup writes to localStorage)
   window.addEventListener('storage', async (event) => {
+    if(event.key === 'tmc_oauth_close'){
+      window.closeOAuthPopup();
+    }
     if(event.key === 'tmc_oauth_payload' && event.newValue){
       try {
         const parsed = JSON.parse(event.newValue);
         if(parsed && parsed.type === 'OAUTH_AUTH_SUCCESS'){
+          window.closeOAuthPopup();
           await handleOAuthSuccess(parsed);
         }
       } catch(e){}
@@ -753,7 +611,11 @@ function setupDiscordAuthControls(){
   try {
     const bc = new BroadcastChannel('tmc_oauth_channel');
     bc.onmessage = async (event) => {
+      if(event.data?.type === 'CLOSE_OAUTH_POPUP'){
+        window.closeOAuthPopup();
+      }
       if(event.data?.type === 'OAUTH_AUTH_SUCCESS'){
+        window.closeOAuthPopup();
         await handleOAuthSuccess(event.data);
       }
     };

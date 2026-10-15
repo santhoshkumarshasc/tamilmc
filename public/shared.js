@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 function createFallbackClient(){
-  const STORAGE_KEY='tmc_live_db_v3';
+  const STORAGE_KEY='tmc_live_db_v4';
 
   const defaultTypes=[
     {id:'type-welcome',name:'Welcome Member',name_ta:'வரவேற்பு உறுப்பினர்',heading:'Community Welcome Certificate',heading_ta:'சமூக வரவேற்புச் சான்றிதழ்',award:'Welcome to Tamil MC Community',award_ta:'தமிழ் MC சமூக வரவேற்பு',theme:'emerald',icon:'shield',message:'Welcome to the Tamil Minecraft community! Official certified creator of TMC Awards.',is_active:true,sort_order:0},
@@ -12,165 +12,35 @@ function createFallbackClient(){
     {id:'type-5',name:'Rising Star',name_ta:'வளரும் நட்சத்திரம்',heading:'Rising Star Certificate',heading_ta:'வளரும் நட்சத்திரச் சான்றிதழ்',award:'Rising Star Creator',award_ta:'வளரும் நட்சத்திரப் படைப்பாளர்',theme:'emerald',icon:'gem',message:'Recognising one of the most promising new Tamil Minecraft creators.',is_active:true,sort_order:5}
   ];
 
-  const defaultProfiles=[
-    {
-      id:'creator-santhosh',
-      handle:'santhosh_tmc',
-      display_name:'Santhosh (TMC)',
-      channel_name:'Tamil Minecraft Official',
-      channel_url:'https://youtube.com/@tamilmc',
-      avatar_url:'/logo.png',
-      avatar_image:'/logo.png',
-      bio:'Lead Administrator of Tamil Minecraft Community. Building the biggest Tamil Minecraft SMP network & creator showcase.',
-      category:'Survival',
-      likes:48,
-      votes:35,
-      cert_count:2,
-      has_welcome:true,
-      is_public:true,
-      is_hidden:false,
-      accent:'#1f9d5e',
-      card_color:'#1f9d5e',
-      card_style:'raised',
-      socials:{yt:'https://youtube.com/@tamilmc',discord:'https://discord.gg/tmc'},
-      social_links:[
-        {platform:'youtube',url:'https://youtube.com/@tamilmc'},
-        {platform:'discord',url:'https://discord.gg/tmc'}
-      ],
-      created_at:'2026-08-01T00:00:00.000Z'
-    },
-    {
-      id:'creator-dravid',
-      handle:'dravid_crafter',
-      display_name:'Dravid Crafter',
-      channel_name:'Tamil SMP Crafters',
-      channel_url:'https://youtube.com',
-      avatar_url:'https://cdn.discordapp.com/embed/avatars/0.png',
-      avatar_image:'https://cdn.discordapp.com/embed/avatars/0.png',
-      bio:'Tamil Minecraft Hardcore survival streamer. Mega castles, Nether highways, and ancient debris mining.',
-      category:'Survival',
-      likes:34,
-      votes:22,
-      cert_count:1,
-      has_welcome:true,
-      is_public:true,
-      is_hidden:false,
-      accent:'#1b8fd6',
-      card_color:'#1b8fd6',
-      card_style:'raised',
-      socials:{yt:'https://youtube.com'},
-      social_links:[{platform:'youtube',url:'https://youtube.com'}],
-      created_at:'2026-08-10T00:00:00.000Z'
-    },
-    {
-      id:'creator-kavi',
-      handle:'kavi_redstone',
-      display_name:'Kavi Redstone',
-      channel_name:'Kavi Gaming Tamil',
-      channel_url:'https://youtube.com',
-      avatar_url:'https://cdn.discordapp.com/embed/avatars/1.png',
-      avatar_image:'https://cdn.discordapp.com/embed/avatars/1.png',
-      bio:'Redstone engineer & automation specialist. 100% efficient farms and flying machines in Tamil.',
-      category:'Redstone',
-      likes:29,
-      votes:18,
-      cert_count:1,
-      has_welcome:true,
-      is_public:true,
-      is_hidden:false,
-      accent:'#e0a81f',
-      card_color:'#e0a81f',
-      card_style:'raised',
-      socials:{yt:'https://youtube.com'},
-      social_links:[{platform:'youtube',url:'https://youtube.com'}],
-      created_at:'2026-08-15T00:00:00.000Z'
-    },
-    {
-      id:'creator-arun',
-      handle:'arun_pvp',
-      display_name:'Arun PvP',
-      channel_name:'Arun MC Tamil',
-      channel_url:'https://youtube.com',
-      avatar_url:'https://cdn.discordapp.com/embed/avatars/2.png',
-      avatar_image:'https://cdn.discordapp.com/embed/avatars/2.png',
-      bio:'Competitive Bedwars, Skywars & Custom SMP PvP arena tournaments in Tamil.',
-      category:'PvP',
-      likes:25,
-      votes:15,
-      cert_count:1,
-      has_welcome:true,
-      is_public:true,
-      is_hidden:false,
-      accent:'#a855f7',
-      card_color:'#a855f7',
-      card_style:'raised',
-      socials:{yt:'https://youtube.com'},
-      social_links:[{platform:'youtube',url:'https://youtube.com'}],
-      created_at:'2026-08-20T00:00:00.000Z'
-    }
-  ];
-
-  const defaultCerts=[
-    {
-      id:'cert-starter-1',
-      cert_code:'CERT-TMC-WINNER-2026',
-      token:'TMC-WINNER-2026-PRO',
-      recipient_name:'Santhosh (TMC)',
-      channel_name:'Tamil Minecraft Official',
-      award:'Best Creator Award',
-      award_ta:'சிறந்த படைப்பாளர் விருது',
-      heading:'Certificate of Victory',
-      heading_ta:'வெற்றிச் சான்றிதழ்',
-      content_title:'TMC Community SMP Season 3',
-      content_url:'https://youtube.com/@tamilmc',
-      message:'Winner of the TMC Awards Best Creator community poll for outstanding Tamil gaming content.',
-      theme:'gold',
-      icon:'trophy',
-      type_name:'Winner',
-      status:'redeemed',
-      user_id:'creator-santhosh',
-      is_welcome:false,
-      issued_at:'2026-09-15T00:00:00.000Z'
-    },
-    {
-      id:'cert-starter-welcome-santhosh',
-      cert_code:'CERT-TMC-WELCOME-SK01',
-      token:'TMC-WELCOME-SK01',
-      recipient_name:'Santhosh (TMC)',
-      channel_name:'Tamil Minecraft Official',
-      award:'Welcome to Tamil MC Community',
-      award_ta:'தமிழ் MC சமூக வரவேற்பு',
-      heading:'Community Welcome Certificate',
-      heading_ta:'சமூக வரவேற்புச் சான்றிதழ்',
-      content_title:'Official Member of TMC Awards',
-      content_url:'https://youtube.com/@tamilmc',
-      message:'Welcome to the Tamil Minecraft community! Official certified creator of TMC Awards.',
-      theme:'emerald',
-      icon:'shield',
-      type_name:'Community Welcome',
-      status:'redeemed',
-      user_id:'creator-santhosh',
-      is_welcome:true,
-      issued_at:'2026-08-01T00:00:00.000Z'
-    }
-  ];
+  const defaultProfiles=[];
+  const defaultCerts=[];
 
   const defaultAdmins=[
     {id:'admin-lead-0',email:'gitsmesk@gmail.com',name:'SK (Lead Admin)',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true},
     {id:'admin-lead-1',email:'santhoshkumarshasc@gmail.com',name:'Santhosh (Lead Admin)',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true},
     {id:'admin-lead-2',email:'admin@tmcawards.org',name:'TMC Awards Operations',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true},
-    {id:'admin-lead-3',email:'ogisbacktamil@gmail.com',name:'TMC Admin (Owner)',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true}
+    {id:'admin-lead-3',email:'ogisbacktamil@gmail.com',name:'TMC Admin (Owner)',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true},
+    {id:'admin-lead-4',email:'rtmgamertamil@gmail.com',name:'RTM Gamer (Owner)',role:'super_admin',password:'ADMINOFTMC',created_at:'2026-09-01T00:00:00.000Z',is_active:true}
   ];
 
   function loadDb(){
     try{
+      // Clean legacy mock DB cache if present
+      try { localStorage.removeItem('tmc_live_db_v3'); } catch(e){}
       const raw=localStorage.getItem(STORAGE_KEY);
       if(raw){
         const parsed=JSON.parse(raw);
-        if(!parsed.profiles||!parsed.profiles.length) parsed.profiles=defaultProfiles;
-        if(!parsed.certs||!parsed.certs.length) parsed.certs=defaultCerts;
+        if(!parsed.profiles) parsed.profiles=[];
+        // Filter out any mock/pre-defined creators
+        parsed.profiles=parsed.profiles.filter(p=>!p.id.startsWith('creator-santhosh')&&!p.id.startsWith('creator-dravid')&&!p.id.startsWith('creator-kavi')&&!p.id.startsWith('creator-arun')&&!p.id.startsWith('mock-')&&p.id!=='creator-sample');
+        if(!parsed.certs) parsed.certs=[];
+        parsed.certs=parsed.certs.filter(c=>!c.id.startsWith('cert-starter-')&&!c.id.startsWith('cert-mock-'));
+        if(!parsed.users) parsed.users=[];
+        parsed.users=parsed.users.filter(u=>u&&!u.id.startsWith('mock-')&&!u.id.startsWith('user-mock')&&u.email!=='creator@example.com'&&!u.id.startsWith('creator-'));
         if(!parsed.admins||!parsed.admins.length) parsed.admins=defaultAdmins;
         if(!parsed.types||!parsed.types.length) parsed.types=defaultTypes;
+        if(!parsed.announcements) parsed.announcements=[];
+        if(!parsed.votes) parsed.votes={};
         // Ensure session persists from dedicated storage key if available
         try{
           const savedSession=localStorage.getItem('tmc_auth_session');
@@ -188,12 +58,25 @@ function createFallbackClient(){
     }catch(e){}
     const init={
       users:[],
-      profiles:defaultProfiles,
-      certs:defaultCerts,
+      profiles:[],
+      certs:[],
       types:defaultTypes,
       admins:defaultAdmins,
+      announcements:[
+        {
+          id:'announcement-welcome',
+          title:'Welcome to TMC Awards 2026! 🎮',
+          message:'Tamil Minecraft Creators showcase & awards voting is now officially open! Connect your Discord to build your profile, showcase your channel, and cast your vote.',
+          badge:'📢 ANNOUNCEMENT',
+          badge_color:'emerald',
+          link_url:'#showcase',
+          link_text:'Browse Creators →',
+          is_active:true,
+          created_at:new Date().toISOString()
+        }
+      ],
       likes:{},
-      votes:{'creator-santhosh':35,'creator-dravid':22,'creator-kavi':18,'creator-arun':15},
+      votes:{},
       session:savedSession,
       isAdmin:false,
       serverIcon:null
@@ -493,10 +376,61 @@ function createFallbackClient(){
         return {data:null,error:null};
       }
 
+      if(fn==='get_active_announcement'){
+        if(!db.announcements) db.announcements=[];
+        const active = db.announcements.find(a=>a.is_active);
+        return {data:active||null,error:null};
+      }
+
       /* Admin APIs */
       const isAdmin=db.isAdmin||(db.session&&db.session.user&&(db.session.user.is_admin||db.session.user.email==='admin@tmcawards.org'));
       if(fn==='admin_gate'||fn==='is_admin'){
         return {data:isAdmin,error:null};
+      }
+      if(fn==='admin_list_announcements'){
+        if(!isAdmin)return {data:null,error:{message:'unauthorized'}};
+        if(!db.announcements) db.announcements=[];
+        return {data:db.announcements,error:null};
+      }
+      if(fn==='admin_save_announcement'){
+        if(!isAdmin)return {data:null,error:{message:'unauthorized'}};
+        if(!db.announcements) db.announcements=[];
+        const title = (params.title||'').trim();
+        const message = (params.message||'').trim();
+        if(!title || !message) return {data:null,error:{message:'Title and message are required'}};
+        const id = params.id || ('announcement-' + Date.now());
+        const existingIdx = db.announcements.findIndex(a=>a.id===id);
+        const item = {
+          id,
+          title,
+          message,
+          badge: (params.badge||'ANNOUNCEMENT').trim(),
+          badge_color: params.badge_color || 'emerald',
+          link_url: (params.link_url||'').trim(),
+          link_text: (params.link_text||'').trim(),
+          is_active: params.is_active !== false,
+          created_at: existingIdx >= 0 ? db.announcements[existingIdx].created_at : new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          author: db.session?.user?.name || db.session?.user?.email || 'Admin'
+        };
+        // If this one is active, deactivate others to have a single clear broadcast banner
+        if(item.is_active){
+          db.announcements.forEach(a=>{ if(a.id!==id) a.is_active = false; });
+        }
+        if(existingIdx >= 0){
+          db.announcements[existingIdx] = item;
+        } else {
+          db.announcements.unshift(item);
+        }
+        saveDb(db);
+        return {data:item,error:null};
+      }
+      if(fn==='admin_delete_announcement'){
+        if(!isAdmin)return {data:null,error:{message:'unauthorized'}};
+        if(!db.announcements) db.announcements=[];
+        db.announcements = db.announcements.filter(a=>a.id!==params.p_id);
+        saveDb(db);
+        return {data:{success:true},error:null};
       }
       if(fn==='admin_list_profiles'||fn==='admin_list_certificates'||fn==='admin_list_types'||fn==='admin_list_users'||fn==='admin_list_admins'){
         if(!isAdmin)return {data:null,error:{message:'unauthorized'}};

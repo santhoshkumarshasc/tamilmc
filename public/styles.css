@@ -429,6 +429,12 @@ nav {
   background: transparent;
   transition: all 0.2s;
   text-decoration: none;
+  width: 100%;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  box-sizing: border-box;
 }
 
 .mobile-nav-link:hover, .mobile-nav-link.active {

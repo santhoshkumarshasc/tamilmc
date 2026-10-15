@@ -115,29 +115,228 @@ async function enter(){
   sample();fillType(null);
 }
 
-/* ---------- tabs ---------- */
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('[data-tab]').forEach(x=>x.setAttribute('aria-pressed',x===b));
-  const t=b.dataset.tab;
-  $('tab-certs').classList.toggle('hide',t!=='certs');
-  $('tab-creators').classList.toggle('hide',t!=='creators');
-  $('tab-users').classList.toggle('hide',t!=='users');
-  $('tab-types').classList.toggle('hide',t!=='types');
-  if($('tab-admins')) $('tab-admins').classList.toggle('hide',t!=='admins');
-  $('tab-settings').classList.toggle('hide',t!=='settings');
+/* ---------- mobile drawer & tab switching ---------- */
+function switchAdminTab(t){
+  if($('app').classList.contains('hide')){
+    closeAdminDrawer();
+    setMsg($('lMsg'), 'Please sign in with your admin credentials to access this section.', 'note');
+    $('lToken')?.focus();
+    return;
+  }
+  document.querySelectorAll('[data-tab]').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.tab===t)));
+  document.querySelectorAll('[data-admin-tab]').forEach(x=>x.classList.toggle('active', x.dataset.adminTab===t));
+  $('tab-certs').classList.toggle('hide', t!=='certs');
+  $('tab-creators').classList.toggle('hide', t!=='creators');
+  $('tab-users').classList.toggle('hide', t!=='users');
+  $('tab-types').classList.toggle('hide', t!=='types');
+  if($('tab-announcements')) $('tab-announcements').classList.toggle('hide', t!=='announcements');
+  if($('tab-admins')) $('tab-admins').classList.toggle('hide', t!=='admins');
+  $('tab-settings').classList.toggle('hide', t!=='settings');
+  closeAdminDrawer();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function openAdminDrawer(){
+  const d = $('adminMobileNav');
+  if(d){
+    d.classList.remove('hide');
+    $('adminNavToggle')?.classList.add('active');
+    $('adminNavToggle')?.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function closeAdminDrawer(){
+  const d = $('adminMobileNav');
+  if(d){
+    d.classList.add('hide');
+    $('adminNavToggle')?.classList.remove('active');
+    $('adminNavToggle')?.setAttribute('aria-expanded', 'false');
+  }
+}
+
+// Desktop tab clicks
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>switchAdminTab(b.dataset.tab));
+
+// Mobile drawer tab clicks
+document.querySelectorAll('[data-admin-tab]').forEach(b=>b.onclick=()=>switchAdminTab(b.dataset.adminTab));
+
+// Mobile drawer open/close
+if($('adminNavToggle')) $('adminNavToggle').onclick = () => {
+  const isClosed = $('adminMobileNav')?.classList.contains('hide');
+  isClosed ? openAdminDrawer() : closeAdminDrawer();
+};
+if($('adminMobileNavClose')) $('adminMobileNavClose').onclick = closeAdminDrawer;
+if($('adminMobileNavBackdrop')) $('adminMobileNavBackdrop').onclick = closeAdminDrawer;
+
+// Mobile Drawer Theme & Lang toggles
+if($('mAdminThemeBtn')) $('mAdminThemeBtn').onclick = () => {
+  const curr=document.documentElement.getAttribute('data-theme')||'light';
+  const next=curr==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try{localStorage.setItem('tmc_theme', next)}catch(e){}
+};
+if($('mAdminLangBtn')) $('mAdminLangBtn').onclick = () => {
+  if($('langBtn')) $('langBtn').click();
+  const nextLang = lang()==='ta'?'தமிழ்':'English';
+  if($('mAdminLangVal')) $('mAdminLangVal').textContent = nextLang;
+};
+if($('mAdminOutBtn')) $('mAdminOutBtn').onclick = async () => {
+  closeAdminDrawer();
+  if($('outBtn')) $('outBtn').click();
+};
+
+/* ---------- Announcements Logic ---------- */
+let announcements = [];
+let editingAnnouncement = null;
+
+function renderAnnouncements(){
+  const box = $('annListContainer');
+  if(!box) return;
+  if(!announcements.length){
+    box.innerHTML = '<div class="empty">No announcements published yet.</div>';
+    return;
+  }
+  box.innerHTML = announcements.map(a => `
+    <div class="list-item" style="padding:14px;border-radius:12px;margin-bottom:10px;background:var(--surface-inset);border:1px solid var(--line-subtle);">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+          <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:9999px;background:var(--em-soft);color:var(--em);">${esc(a.badge || 'NOTICE')}</span>
+          <span style="font-size:11px;font-weight:700;color:${a.is_active ? 'var(--em)' : 'var(--muted)'};">${a.is_active ? '● Active on Site' : '○ Inactive'}</span>
+          <span style="font-size:11px;color:var(--muted);">${new Date(a.created_at).toLocaleDateString()}</span>
+        </div>
+        <b style="font-size:14px;display:block;margin-bottom:2px;color:var(--text);">${esc(a.title)}</b>
+        <p style="font-size:12px;color:var(--muted);margin:0;line-height:1.4;">${esc(a.message)}</p>
+        ${a.link_url ? `<span style="font-size:11px;color:var(--em);display:inline-block;margin-top:4px;">🔗 ${esc(a.link_text || a.link_url)}</span>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;flex-none;align-items:center;">
+        <button type="button" class="btn small" data-ann-toggle="${esc(a.id)}" title="Toggle Active/Inactive">
+          ${a.is_active ? 'Deactivate' : 'Activate'}
+        </button>
+        <button type="button" class="btn small" data-ann-edit="${esc(a.id)}">Edit</button>
+        <button type="button" class="btn small danger" data-ann-del="${esc(a.id)}">Delete</button>
+      </div>
+    </div>
+  `).join('');
+
+  box.querySelectorAll('[data-ann-toggle]').forEach(btn => {
+    btn.onclick = async () => {
+      const target = announcements.find(x => x.id === btn.dataset.annToggle);
+      if(!target) return;
+      target.is_active = !target.is_active;
+      await sb.rpc('admin_save_announcement', target);
+      await refresh();
+    };
+  });
+
+  box.querySelectorAll('[data-ann-edit]').forEach(btn => {
+    btn.onclick = () => {
+      const target = announcements.find(x => x.id === btn.dataset.annEdit);
+      if(!target) return;
+      editingAnnouncement = target;
+      fillAnnouncementForm(target);
+      switchAdminTab('announcements');
+      $('annTitle')?.focus();
+    };
+  });
+
+  box.querySelectorAll('[data-ann-del]').forEach(btn => {
+    btn.onclick = async () => {
+      const target = announcements.find(x => x.id === btn.dataset.annDel);
+      if(!target || !confirm(`Delete announcement "${target.title}"?`)) return;
+      await sb.rpc('admin_delete_announcement', { p_id: target.id });
+      if(editingAnnouncement && editingAnnouncement.id === target.id) fillAnnouncementForm(null);
+      await refresh();
+    };
+  });
+}
+
+function fillAnnouncementForm(a){
+  if($('annId')) $('annId').value = a ? a.id : '';
+  if($('annTitle')) $('annTitle').value = a ? a.title : '';
+  if($('annMessage')) $('annMessage').value = a ? a.message : '';
+  if($('annBadge')) $('annBadge').value = a ? (a.badge || '') : '';
+  if($('annBadgeColor')) $('annBadgeColor').value = a ? (a.badge_color || 'emerald') : 'emerald';
+  if($('annLinkUrl')) $('annLinkUrl').value = a ? (a.link_url || '') : '';
+  if($('annLinkText')) $('annLinkText').value = a ? (a.link_text || '') : '';
+  if($('annActive')) $('annActive').checked = a ? (a.is_active !== false) : true;
+  updateAnnouncementPreview();
+  clearMsg($('annOutMsg'));
+}
+
+function updateAnnouncementPreview(){
+  const title = $('annTitle')?.value.trim() || 'Welcome to TMC Awards 2026! 🎮';
+  const msg = $('annMessage')?.value.trim() || 'Tamil Minecraft Creators showcase & awards voting is now officially open! Connect your Discord to build your profile, showcase your channel, and cast your vote.';
+  const badge = $('annBadge')?.value.trim() || '📢 ANNOUNCEMENT';
+  const linkText = $('annLinkText')?.value.trim() || 'Browse Creators →';
+  const hasLink = Boolean($('annLinkUrl')?.value.trim());
+  const isActive = $('annActive')?.checked;
+
+  if($('prevTitle')) $('prevTitle').textContent = title;
+  if($('prevMsg')) $('prevMsg').textContent = msg;
+  if($('prevBadge')) $('prevBadge').textContent = badge;
+  if($('prevActiveStatus')) {
+    $('prevActiveStatus').textContent = isActive ? '● Active' : '○ Inactive';
+    $('prevActiveStatus').style.color = isActive ? 'var(--em)' : 'var(--muted)';
+  }
+  if($('prevActionBtn')) {
+    $('prevActionBtn').style.display = hasLink ? 'inline-block' : 'none';
+    const span = $('prevActionBtn').querySelector('span');
+    if(span) span.textContent = linkText;
+  }
+}
+
+['annTitle','annMessage','annBadge','annLinkUrl','annLinkText'].forEach(id=>{
+  $(id)?.addEventListener('input', updateAnnouncementPreview);
 });
+$('annBadgeColor')?.addEventListener('change', updateAnnouncementPreview);
+$('annActive')?.addEventListener('change', updateAnnouncementPreview);
+
+if($('annResetBtn')) $('annResetBtn').onclick = () => {
+  editingAnnouncement = null;
+  fillAnnouncementForm(null);
+};
+
+if($('annSaveBtn')) $('annSaveBtn').onclick = async () => {
+  const title = $('annTitle')?.value.trim();
+  const message = $('annMessage')?.value.trim();
+  if(!title || !message){
+    setMsg($('annOutMsg'), 'Announcement title and message are required.', 'err');
+    return;
+  }
+  const payload = {
+    id: $('annId')?.value || undefined,
+    title,
+    message,
+    badge: $('annBadge')?.value.trim() || 'ANNOUNCEMENT',
+    badge_color: $('annBadgeColor')?.value || 'emerald',
+    link_url: $('annLinkUrl')?.value.trim(),
+    link_text: $('annLinkText')?.value.trim(),
+    is_active: $('annActive')?.checked
+  };
+  const {data, error} = await sb.rpc('admin_save_announcement', payload);
+  if(error){
+    setMsg($('annOutMsg'), error.message || 'Could not save announcement.', 'err');
+    return;
+  }
+  setMsg($('annOutMsg'), 'Announcement published successfully!', 'ok');
+  fx.confetti();
+  fillAnnouncementForm(null);
+  await refresh();
+};
 
 async function refresh(){
-  const [p,c,ty,u,adm]=await Promise.all([
+  const [p,c,ty,u,adm,ann]=await Promise.all([
     sb.rpc('admin_list_profiles'),
     sb.rpc('admin_list_certificates'),
     sb.rpc('admin_list_types'),
     sb.rpc('admin_list_users'),
-    sb.rpc('admin_list_admins')
+    sb.rpc('admin_list_admins'),
+    sb.rpc('admin_list_announcements')
   ]);
   profiles=p.data||[];certs=c.data||[];types=ty.data||[];users=u.data||[];
   admins=(adm&&adm.data)||[];
-  renderProfiles();renderCerts();renderTypes();renderUsers();renderAdmins();
+  announcements=(ann&&ann.data)||[];
+  renderProfiles();renderCerts();renderTypes();renderUsers();renderAdmins();renderAnnouncements();
   const keep=$('cType').value;typeOptions(keep);
   if(!keep&&types.some(x=>x.is_active)&&!$('cAward').value){$('cType').value=types.find(x=>x.is_active).id;applyType()}
   $('cPick').innerHTML=`<option value="">${esc(t('ad.manual'))}</option>`+profiles.map(x=>`<option value="${esc(x.id)}">${esc(x.channel_name)} (@${esc(x.handle)})</option>`).join('');

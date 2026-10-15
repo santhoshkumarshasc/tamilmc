@@ -16,7 +16,7 @@ import {
   CertTheme
 } from './types.js';
 
-export const STORAGE_KEY = 'tmc_live_db_v3';
+export const STORAGE_KEY = 'tmc_live_db_v4';
 
 export const INITIAL_SEED_ADMINS: AdminUser[] = [
   {
@@ -56,6 +56,17 @@ export const INITIAL_SEED_ADMINS: AdminUser[] = [
     id: 'admin-lead-3',
     email: 'ogisbacktamil@gmail.com',
     name: 'TMC Admin (Owner)',
+    role: 'super_admin',
+    password: 'ADMINOFTMC',
+    created_at: '2026-09-01T00:00:00.000Z',
+    created_by: 'system',
+    notes: 'Owner Administrator Account',
+    is_active: true
+  },
+  {
+    id: 'admin-lead-4',
+    email: 'rtmgamertamil@gmail.com',
+    name: 'RTM Gamer (Owner)',
     role: 'super_admin',
     password: 'ADMINOFTMC',
     created_at: '2026-09-01T00:00:00.000Z',
@@ -152,231 +163,10 @@ export const DEFAULT_TYPES: CertificateType[] = [
   }
 ];
 
-export const INITIAL_SEED_PROFILES: CreatorProfile[] = [
-  {
-    id: 'creator-blockthambi',
-    handle: 'blockthambi',
-    display_name: 'Santhosh (Block Thambi)',
-    channel_name: 'Block Thambi Tamil',
-    channel_url: 'https://youtube.com/@blockthambi',
-    bio: 'Tamil Minecraft Survival & Hardcore builder. Mega ancient temples, Tamil village SMP architectures, and Nether highway networks.',
-    accent: '#1f7a45',
-    card_style: 'raised',
-    socials: {
-      yt: 'https://youtube.com/@blockthambi',
-      discord: 'https://discord.gg/tamilmc',
-      insta: 'https://instagram.com/blockthambitamil'
-    },
-    custom_links: [
-      { id: 'cl-1', title: 'Thambi SMP Server IP', url: 'https://play.thambismp.in', platform: 'custom' },
-      { id: 'cl-2', title: 'Survival World Download', url: 'https://blockthambi.com/downloads', platform: 'custom' }
-    ],
-    is_public: true,
-    likes: 154,
-    votes: 92,
-    cert_count: 2,
-    has_welcome: true,
-    created_at: '2026-09-01T10:00:00.000Z'
-  },
-  {
-    id: 'creator-madrascraft',
-    handle: 'madrascraft',
-    display_name: 'Karthik Raja',
-    channel_name: 'Madras Craft Gaming',
-    channel_url: 'https://youtube.com/@madrascraft',
-    bio: 'Tamil Minecraft redstone engineering, 100K item sorters, high-speed automated iron and wither skull farms.',
-    accent: '#e0a81f',
-    card_style: 'raised',
-    socials: {
-      yt: 'https://youtube.com/@madrascraft',
-      discord: 'https://discord.gg/madrascraft'
-    },
-    custom_links: [
-      { id: 'cl-3', title: 'Redstone Schematics Archive', url: 'https://madrascraft.org/schematics', platform: 'custom' }
-    ],
-    is_public: true,
-    likes: 128,
-    votes: 76,
-    cert_count: 1,
-    has_welcome: true,
-    created_at: '2026-09-05T12:00:00.000Z'
-  },
-  {
-    id: 'creator-tamilcrafter',
-    handle: 'tamilcrafter',
-    display_name: 'Vignesh Crafter',
-    channel_name: 'Tamil Crafter Studio',
-    channel_url: 'https://youtube.com/@tamilcrafter',
-    bio: 'Cinematic story-driven Minecraft Tamil roleplay series, custom animated resource packs, and Chola kingdom builds.',
-    accent: '#177385',
-    card_style: 'raised',
-    socials: {
-      yt: 'https://youtube.com/@tamilcrafter',
-      insta: 'https://instagram.com/tamilcrafter'
-    },
-    custom_links: [
-      { id: 'cl-4', title: 'Chola Kingdom Map Tour', url: 'https://tamilcrafter.com/chola-map', platform: 'custom' }
-    ],
-    is_public: true,
-    likes: 104,
-    votes: 59,
-    cert_count: 1,
-    has_welcome: true,
-    created_at: '2026-09-10T14:30:00.000Z'
-  },
-  {
-    id: 'creator-tncreeper',
-    handle: 'tncreeper',
-    display_name: 'Praveen TN',
-    channel_name: 'TN Creeper King',
-    channel_url: 'https://youtube.com/@tncreeper',
-    bio: 'Tamil PvP champion, Bedwars clutching tutorials, and 100 Days Hardcore Survival challenges with crazy mods.',
-    accent: '#e11d48',
-    card_style: 'raised',
-    socials: {
-      yt: 'https://youtube.com/@tncreeper',
-      twitch: 'https://twitch.tv/tncreeper'
-    },
-    custom_links: [],
-    is_public: true,
-    likes: 139,
-    votes: 81,
-    cert_count: 1,
-    has_welcome: true,
-    created_at: '2026-09-12T16:00:00.000Z'
-  },
-  {
-    id: 'creator-kovaisteve',
-    handle: 'kovaisteve',
-    display_name: 'Dinesh Kovai',
-    channel_name: 'Kovai Steve Minecraft',
-    channel_url: 'https://youtube.com/@kovaisteve',
-    bio: 'Friendly Tamil Minecraft tutorials for beginners, aesthetic cottage core builds, shader setups, and low-end PC optimization.',
-    accent: '#22c55e',
-    card_style: 'raised',
-    socials: {
-      yt: 'https://youtube.com/@kovaisteve'
-    },
-    custom_links: [
-      { id: 'cl-5', title: 'Beginner Guidebook PDF', url: 'https://kovaisteve.in/guide', platform: 'custom' }
-    ],
-    is_public: true,
-    likes: 91,
-    votes: 43,
-    cert_count: 1,
-    has_welcome: true,
-    created_at: '2026-09-15T09:00:00.000Z'
-  },
-  {
-    id: 'creator-chennaismp',
-    handle: 'chennaismp',
-    display_name: 'Chennai Craft Crew',
-    channel_name: 'Chennai SMP Official',
-    channel_url: 'https://youtube.com/@chennaismp',
-    bio: 'Official Tamil community multiplayer SMP server with seasonal lore, faction wars, and community events.',
-    accent: '#3cc7d9',
-    card_style: 'raised',
-    socials: {
-      yt: 'https://youtube.com/@chennaismp',
-      discord: 'https://discord.gg/chennaismp'
-    },
-    custom_links: [
-      { id: 'cl-6', title: 'Join SMP Discord Server', url: 'https://discord.gg/chennaismp', platform: 'custom' }
-    ],
-    is_public: true,
-    likes: 115,
-    votes: 68,
-    cert_count: 2,
-    has_welcome: true,
-    created_at: '2026-09-18T18:00:00.000Z'
-  }
-];
+export const INITIAL_SEED_PROFILES: CreatorProfile[] = [];
 
 export function createInitialSeedCerts(): Certificate[] {
-  return [
-    {
-      id: 'cert-seed-welcome-1',
-      cert_code: 'CERT-TMC-WELCOME-THAM',
-      token: 'TMC-WELCOME-THAM',
-      recipient_name: 'Santhosh (Block Thambi)',
-      channel_name: 'Block Thambi Tamil',
-      award: 'Welcome to Tamil MC Community',
-      award_ta: 'தமிழ் MC சமூக வரவேற்பு',
-      heading: 'Community Welcome Certificate',
-      heading_ta: 'சமூக வரவேற்புச் சான்றிதழ்',
-      content_title: 'Official Member of TMC Awards',
-      content_url: 'https://youtube.com/@blockthambi',
-      message: 'Welcome to the Tamil Minecraft community! Official certified creator of TMC Awards.',
-      theme: 'emerald',
-      icon: 'shield',
-      type_name: 'Community Welcome',
-      status: 'redeemed',
-      user_id: 'creator-blockthambi',
-      is_welcome: true,
-      issued_at: '2026-09-01T10:05:00.000Z'
-    },
-    {
-      id: 'cert-seed-award-1',
-      cert_code: 'CERT-TMC-BESTCREATOR-2026',
-      token: 'TMC-BEST-THAM-2026',
-      recipient_name: 'Santhosh (Block Thambi)',
-      channel_name: 'Block Thambi Tamil',
-      award: 'Best Creator Award',
-      award_ta: 'சிறந்த படைப்பாளர் விருது',
-      heading: 'Certificate of Victory',
-      heading_ta: 'வெற்றிச் சான்றிதழ்',
-      content_title: 'Mega Ancient Temple 100 Days Hardcore',
-      content_url: 'https://youtube.com/@blockthambi',
-      message: 'Winner of the TMC Awards Best Creator community poll for exceptional builds and dedication.',
-      theme: 'gold',
-      icon: 'trophy',
-      type_name: 'Winner',
-      status: 'redeemed',
-      user_id: 'creator-blockthambi',
-      issued_at: '2026-09-02T12:00:00.000Z'
-    },
-    {
-      id: 'cert-seed-welcome-2',
-      cert_code: 'CERT-TMC-WELCOME-MADR',
-      token: 'TMC-WELCOME-MADR',
-      recipient_name: 'Karthik Raja',
-      channel_name: 'Madras Craft Gaming',
-      award: 'Welcome to Tamil MC Community',
-      award_ta: 'தமிழ் MC சமூக வரவேற்பு',
-      heading: 'Community Welcome Certificate',
-      heading_ta: 'சமூக வரவேற்புச் சான்றிதழ்',
-      content_title: 'Official Member of TMC Awards',
-      content_url: 'https://youtube.com/@madrascraft',
-      message: 'Welcome to the Tamil Minecraft community! Official certified creator of TMC Awards.',
-      theme: 'emerald',
-      icon: 'shield',
-      type_name: 'Community Welcome',
-      status: 'redeemed',
-      user_id: 'creator-madrascraft',
-      is_welcome: true,
-      issued_at: '2026-09-05T12:05:00.000Z'
-    },
-    {
-      id: 'cert-seed-award-2',
-      cert_code: 'CERT-TMC-REDSTONE-2026',
-      token: 'TMC-RED-MADR-2026',
-      recipient_name: 'Karthik Raja',
-      channel_name: 'Madras Craft Gaming',
-      award: 'Outstanding Creator',
-      award_ta: 'சிறந்த படைப்பாளர்',
-      heading: 'Certificate of Achievement',
-      heading_ta: 'சாதனைச் சான்றிதழ்',
-      content_title: '100K Item Sorter & Redstone Automation Guide',
-      content_url: 'https://youtube.com/@madrascraft',
-      message: 'Honouring outstanding technical redstone innovation for the Tamil Minecraft community.',
-      theme: 'emerald',
-      icon: 'star',
-      type_name: 'Achievement',
-      status: 'redeemed',
-      user_id: 'creator-madrascraft',
-      issued_at: '2026-09-06T15:00:00.000Z'
-    }
-  ];
+  return [];
 }
 
 export function createFallbackClient() {
@@ -386,12 +176,19 @@ export function createFallbackClient() {
       if (raw) {
         const parsed = JSON.parse(raw);
         // Ensure default profiles exist if empty
-        if (!parsed.profiles || parsed.profiles.length === 0) {
-          parsed.profiles = JSON.parse(JSON.stringify(INITIAL_SEED_PROFILES));
-        }
-        if (!parsed.certs || parsed.certs.length === 0) {
-          parsed.certs = createInitialSeedCerts();
-        }
+        if (!parsed.profiles) parsed.profiles = [];
+        parsed.profiles = parsed.profiles.filter((p: any) =>
+          !p.id.startsWith('creator-santhosh') &&
+          !p.id.startsWith('creator-dravid') &&
+          !p.id.startsWith('creator-kavi') &&
+          !p.id.startsWith('creator-arun') &&
+          !p.id.startsWith('mock-') &&
+          p.id !== 'creator-sample'
+        );
+        if (!parsed.certs) parsed.certs = [];
+        parsed.certs = parsed.certs.filter((c: any) => !c.id.startsWith('cert-starter-') && !c.id.startsWith('cert-mock-'));
+        if (!parsed.users) parsed.users = [];
+        parsed.users = parsed.users.filter((u: any) => u && !u.id.startsWith('mock-') && !u.id.startsWith('user-mock') && u.email !== 'creator@example.com' && !u.id.startsWith('creator-'));
         if (!parsed.types || parsed.types.length === 0) {
           parsed.types = JSON.parse(JSON.stringify(DEFAULT_TYPES));
         }
@@ -400,6 +197,7 @@ export function createFallbackClient() {
         }
         if (!parsed.votes) parsed.votes = {};
         if (!parsed.likes) parsed.likes = {};
+        if (!parsed.announcements) parsed.announcements = [];
         saveDb(parsed);
         return parsed;
       }
@@ -685,6 +483,55 @@ export function createFallbackClient() {
           return { data: { ok: true, session }, error: null };
         }
         return { data: { ok: false, error: 'Invalid secret token' }, error: null };
+      }
+      if (fn === 'get_active_announcement') {
+        if (!db.announcements) db.announcements = [];
+        const active = db.announcements.find(a => a.is_active);
+        return { data: active || null, error: null };
+      }
+      if (fn === 'admin_list_announcements') {
+        if (!isAdmin) return { data: null, error: { message: 'Unauthorized' } };
+        if (!db.announcements) db.announcements = [];
+        return { data: db.announcements, error: null };
+      }
+      if (fn === 'admin_save_announcement') {
+        if (!isAdmin) return { data: null, error: { message: 'Unauthorized' } };
+        if (!db.announcements) db.announcements = [];
+        const title = (params.title || '').trim();
+        const message = (params.message || '').trim();
+        if (!title || !message) return { data: null, error: { message: 'Title and message are required' } };
+        const id = params.id || ('announcement-' + Date.now());
+        const existingIdx = db.announcements.findIndex(a => a.id === id);
+        const item = {
+          id,
+          title,
+          message,
+          badge: (params.badge || 'ANNOUNCEMENT').trim(),
+          badge_color: params.badge_color || 'emerald',
+          link_url: (params.link_url || '').trim(),
+          link_text: (params.link_text || '').trim(),
+          is_active: params.is_active !== false,
+          created_at: existingIdx >= 0 ? db.announcements[existingIdx].created_at : new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          author: db.session?.user?.name || db.session?.user?.email || 'Admin'
+        };
+        if (item.is_active) {
+          db.announcements.forEach(a => { if (a.id !== id) a.is_active = false; });
+        }
+        if (existingIdx >= 0) {
+          db.announcements[existingIdx] = item;
+        } else {
+          db.announcements.unshift(item);
+        }
+        saveDb(db);
+        return { data: item, error: null };
+      }
+      if (fn === 'admin_delete_announcement') {
+        if (!isAdmin) return { data: null, error: { message: 'Unauthorized' } };
+        if (!db.announcements) db.announcements = [];
+        db.announcements = db.announcements.filter(a => a.id !== params.p_id);
+        saveDb(db);
+        return { data: { success: true }, error: null };
       }
       if (fn === 'admin_list_profiles') return { data: db.profiles, error: null };
       if (fn === 'admin_list_certificates') return { data: db.certs, error: null };

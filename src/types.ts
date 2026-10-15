@@ -139,12 +139,27 @@ export interface LegalPolicySection {
   items_ta?: string[];
 }
 
+export interface Announcement {
+  id: string;
+  title: string;
+  message: string;
+  badge?: string;
+  badge_color?: string;
+  link_url?: string;
+  link_text?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+  author?: string;
+}
+
 export interface DatabaseState {
   users: UserAccount[];
   admins: AdminUser[];
   profiles: CreatorProfile[];
   certs: Certificate[];
   types: CertificateType[];
+  announcements?: Announcement[];
   likes: Record<string, string[]>;
   votes: Record<string, string>;
   session: AuthSession | null;

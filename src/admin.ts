@@ -11,7 +11,8 @@ import {
   CertificateType,
   UserAccount,
   AdminUser,
-  CertTheme
+  CertTheme,
+  Announcement
 } from './types.js';
 
 let factorId: string | null = null;
@@ -20,6 +21,8 @@ let certs: Certificate[] = [];
 let types: CertificateType[] = [];
 let users: UserAccount[] = [];
 let admins: AdminUser[] = [];
+let announcements: Announcement[] = [];
+let editingAnnouncement: Announcement | null = null;
 let editingType: CertificateType | null = null;
 let editing: CreatorProfile | null = null;
 let currentCert: Certificate | null = null;
@@ -128,12 +131,13 @@ async function initAdminAuth(): Promise<void> {
 
 /* DATA LOADING */
 async function loadAll(): Promise<void> {
-  const [p, c, ty, u, adm] = await Promise.all([
+  const [p, c, ty, u, adm, ann] = await Promise.all([
     (window as any).sb.rpc('admin_list_profiles'),
     (window as any).sb.rpc('admin_list_certificates'),
     (window as any).sb.rpc('admin_list_types'),
     (window as any).sb.rpc('admin_list_users'),
-    (window as any).sb.rpc('admin_list_admins')
+    (window as any).sb.rpc('admin_list_admins'),
+    (window as any).sb.rpc('admin_list_announcements')
   ]);
 
   profiles = p.data || [];
@@ -141,6 +145,7 @@ async function loadAll(): Promise<void> {
   types = ty.data || [];
   users = u.data || [];
   admins = (adm && adm.data) || [];
+  announcements = (ann && ann.data) || [];
 
   updateDashboardStats();
   renderCertsTab();
@@ -148,6 +153,7 @@ async function loadAll(): Promise<void> {
   renderUsersTab();
   renderTypesTab();
   renderAdminsTab();
+  renderAnnouncementsTab();
 }
 
 function updateDashboardStats(): void {
@@ -460,20 +466,272 @@ window.deleteAdmin = async (id: string) => {
   }
 };
 
-// Tabs navigation
+// Tabs navigation & mobile drawer
+function switchAdminTab(tKey: string): void {
+  const sApp = $('app');
+  if (sApp && sApp.classList.contains('hide')) {
+    closeAdminDrawer();
+    (window as any).setMsg?.($('lMsg'), 'Please sign in with your admin credentials to access this section.', 'note');
+    ($('lToken') as HTMLInputElement)?.focus();
+    return;
+  }
+  document.querySelectorAll<HTMLButtonElement>('.tabs .chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tab === tKey)));
+  document.querySelectorAll<HTMLElement>('[data-admin-tab]').forEach(b => b.classList.toggle('active', b.dataset.adminTab === tKey));
+
+  ['certs', 'creators', 'users', 'types', 'announcements', 'admins', 'settings'].forEach(k => {
+    const pane = $(`tab-${k}`);
+    if (pane) pane.classList.toggle('hide', k !== tKey);
+  });
+  closeAdminDrawer();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function openAdminDrawer(): void {
+  const d = $('adminMobileNav');
+  if (d) {
+    d.classList.remove('hide');
+    $('adminNavToggle')?.classList.add('active');
+    $('adminNavToggle')?.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function closeAdminDrawer(): void {
+  const d = $('adminMobileNav');
+  if (d) {
+    d.classList.add('hide');
+    $('adminNavToggle')?.classList.remove('active');
+    $('adminNavToggle')?.setAttribute('aria-expanded', 'false');
+  }
+}
+
+function setupAdminMobileDrawer(): void {
+  const toggleBtn = $('adminNavToggle');
+  if (toggleBtn) {
+    toggleBtn.onclick = () => {
+      const isClosed = $('adminMobileNav')?.classList.contains('hide');
+      if (isClosed) openAdminDrawer();
+      else closeAdminDrawer();
+    };
+  }
+
+  const closeBtn = $('adminMobileNavClose');
+  if (closeBtn) closeBtn.onclick = closeAdminDrawer;
+
+  const backdrop = $('adminMobileNavBackdrop');
+  if (backdrop) backdrop.onclick = closeAdminDrawer;
+
+  document.querySelectorAll<HTMLElement>('[data-admin-tab]').forEach(btn => {
+    btn.onclick = () => {
+      const tKey = btn.dataset.adminTab;
+      if (tKey) switchAdminTab(tKey);
+    };
+  });
+
+  const mTheme = $('mAdminThemeBtn');
+  if (mTheme) {
+    mTheme.onclick = () => {
+      const curr = document.documentElement.getAttribute('data-theme') || 'light';
+      const next = curr === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('tmc_theme', next); } catch (e) {}
+    };
+  }
+
+  const mLang = $('mAdminLangBtn');
+  if (mLang) {
+    mLang.onclick = () => {
+      const langBtn = $('langBtn');
+      if (langBtn) langBtn.click();
+    };
+  }
+
+  const mOut = $('mAdminOutBtn');
+  if (mOut) {
+    mOut.onclick = async () => {
+      closeAdminDrawer();
+      await (window as any).sb.auth.signOut();
+      showStep('login');
+    };
+  }
+}
+
 function setupTabs(): void {
   document.querySelectorAll<HTMLButtonElement>('.tabs .chip').forEach(btn => {
     btn.onclick = () => {
       const tab = btn.dataset.tab;
-      document.querySelectorAll<HTMLButtonElement>('.tabs .chip').forEach(b => b.setAttribute('aria-pressed', 'false'));
-      btn.setAttribute('aria-pressed', 'true');
-
-      ['certs', 'creators', 'users', 'types', 'admins', 'settings'].forEach(tKey => {
-        const pane = $(`tab-${tKey}`);
-        if (pane) pane.classList.toggle('hide', tKey !== tab);
-      });
+      if (tab) switchAdminTab(tab);
     };
   });
+}
+
+/* ---------- ANNOUNCEMENTS MANAGEMENT ---------- */
+function renderAnnouncementsTab(): void {
+  const box = $('annListContainer');
+  if (!box) return;
+  if (!announcements.length) {
+    box.innerHTML = '<div class="empty">No announcements published yet.</div>';
+    return;
+  }
+
+  box.innerHTML = announcements.map(a => `
+    <div class="list-item" style="padding:14px;border-radius:12px;margin-bottom:10px;background:var(--surface-inset);border:1px solid var(--line-subtle);">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+          <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:9999px;background:var(--em-soft);color:var(--em);">${esc(a.badge || 'NOTICE')}</span>
+          <span style="font-size:11px;font-weight:700;color:${a.is_active ? 'var(--em)' : 'var(--muted)'};">${a.is_active ? '● Active on Site' : '○ Inactive'}</span>
+          <span style="font-size:11px;color:var(--muted);">${new Date(a.created_at).toLocaleDateString()}</span>
+        </div>
+        <b style="font-size:14px;display:block;margin-bottom:2px;color:var(--text);">${esc(a.title)}</b>
+        <p style="font-size:12px;color:var(--muted);margin:0;line-height:1.4;">${esc(a.message)}</p>
+        ${a.link_url ? `<span style="font-size:11px;color:var(--em);display:inline-block;margin-top:4px;">🔗 ${esc(a.link_text || a.link_url)}</span>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;flex-none;align-items:center;">
+        <button type="button" class="btn small" data-ann-toggle="${esc(a.id)}" title="Toggle Active/Inactive">
+          ${a.is_active ? 'Deactivate' : 'Activate'}
+        </button>
+        <button type="button" class="btn small" data-ann-edit="${esc(a.id)}">Edit</button>
+        <button type="button" class="btn small danger" data-ann-del="${esc(a.id)}">Delete</button>
+      </div>
+    </div>
+  `).join('');
+
+  box.querySelectorAll<HTMLButtonElement>('[data-ann-toggle]').forEach(btn => {
+    btn.onclick = async () => {
+      const target = announcements.find(x => x.id === btn.dataset.annToggle);
+      if (!target) return;
+      target.is_active = !target.is_active;
+      await (window as any).sb.rpc('admin_save_announcement', target);
+      await loadAll();
+    };
+  });
+
+  box.querySelectorAll<HTMLButtonElement>('[data-ann-edit]').forEach(btn => {
+    btn.onclick = () => {
+      const target = announcements.find(x => x.id === btn.dataset.annEdit);
+      if (!target) return;
+      editingAnnouncement = target;
+      fillAnnouncementForm(target);
+      switchAdminTab('announcements');
+      ($('annTitle') as HTMLInputElement)?.focus();
+    };
+  });
+
+  box.querySelectorAll<HTMLButtonElement>('[data-ann-del]').forEach(btn => {
+    btn.onclick = async () => {
+      const target = announcements.find(x => x.id === btn.dataset.annDel);
+      if (!target || !confirm(`Delete announcement "${target.title}"?`)) return;
+      await (window as any).sb.rpc('admin_delete_announcement', { p_id: target.id });
+      if (editingAnnouncement && editingAnnouncement.id === target.id) fillAnnouncementForm(null);
+      await loadAll();
+    };
+  });
+}
+
+function fillAnnouncementForm(a: Announcement | null): void {
+  const annId = $('annId') as HTMLInputElement;
+  const annTitle = $('annTitle') as HTMLInputElement;
+  const annMessage = $('annMessage') as HTMLTextAreaElement;
+  const annBadge = $('annBadge') as HTMLInputElement;
+  const annBadgeColor = $('annBadgeColor') as HTMLSelectElement;
+  const annLinkUrl = $('annLinkUrl') as HTMLInputElement;
+  const annLinkText = $('annLinkText') as HTMLInputElement;
+  const annActive = $('annActive') as HTMLInputElement;
+
+  if (annId) annId.value = a ? a.id : '';
+  if (annTitle) annTitle.value = a ? a.title : '';
+  if (annMessage) annMessage.value = a ? a.message : '';
+  if (annBadge) annBadge.value = a ? (a.badge || '') : '';
+  if (annBadgeColor) annBadgeColor.value = a ? (a.badge_color || 'emerald') : 'emerald';
+  if (annLinkUrl) annLinkUrl.value = a ? (a.link_url || '') : '';
+  if (annLinkText) annLinkText.value = a ? (a.link_text || '') : '';
+  if (annActive) annActive.checked = a ? (a.is_active !== false) : true;
+
+  updateAnnouncementPreview();
+  (window as any).clearMsg?.($('annOutMsg'));
+}
+
+function updateAnnouncementPreview(): void {
+  const annTitle = $('annTitle') as HTMLInputElement;
+  const annMessage = $('annMessage') as HTMLTextAreaElement;
+  const annBadge = $('annBadge') as HTMLInputElement;
+  const annLinkUrl = $('annLinkUrl') as HTMLInputElement;
+  const annLinkText = $('annLinkText') as HTMLInputElement;
+  const annActive = $('annActive') as HTMLInputElement;
+
+  const title = annTitle?.value.trim() || 'Welcome to TMC Awards 2026! 🎮';
+  const msg = annMessage?.value.trim() || 'Tamil Minecraft Creators showcase & awards voting is now officially open! Connect your Discord to build your profile, showcase your channel, and cast your vote.';
+  const badge = annBadge?.value.trim() || '📢 ANNOUNCEMENT';
+  const linkText = annLinkText?.value.trim() || 'Browse Creators →';
+  const hasLink = Boolean(annLinkUrl?.value.trim());
+  const isActive = annActive?.checked;
+
+  const prevTitle = $('prevTitle');
+  const prevMsg = $('prevMsg');
+  const prevBadge = $('prevBadge');
+  const prevActiveStatus = $('prevActiveStatus');
+  const prevActionBtn = $('prevActionBtn');
+
+  if (prevTitle) prevTitle.textContent = title;
+  if (prevMsg) prevMsg.textContent = msg;
+  if (prevBadge) prevBadge.textContent = badge;
+  if (prevActiveStatus) {
+    prevActiveStatus.textContent = isActive ? '● Active' : '○ Inactive';
+    prevActiveStatus.style.color = isActive ? 'var(--em)' : 'var(--muted)';
+  }
+  if (prevActionBtn) {
+    prevActionBtn.style.display = hasLink ? 'inline-block' : 'none';
+    const span = prevActionBtn.querySelector('span');
+    if (span) span.textContent = linkText;
+  }
+}
+
+function setupAnnouncementControls(): void {
+  ['annTitle', 'annMessage', 'annBadge', 'annLinkUrl', 'annLinkText'].forEach(id => {
+    $(id)?.addEventListener('input', updateAnnouncementPreview);
+  });
+  $('annBadgeColor')?.addEventListener('change', updateAnnouncementPreview);
+  $('annActive')?.addEventListener('change', updateAnnouncementPreview);
+
+  const resetBtn = $('annResetBtn');
+  if (resetBtn) {
+    resetBtn.onclick = () => {
+      editingAnnouncement = null;
+      fillAnnouncementForm(null);
+    };
+  }
+
+  const saveBtn = $('annSaveBtn');
+  if (saveBtn) {
+    saveBtn.onclick = async () => {
+      const title = ($('annTitle') as HTMLInputElement)?.value.trim();
+      const message = ($('annMessage') as HTMLTextAreaElement)?.value.trim();
+      if (!title || !message) {
+        (window as any).setMsg?.($('annOutMsg'), 'Announcement title and message are required.', 'err');
+        return;
+      }
+
+      const payload = {
+        id: ($('annId') as HTMLInputElement)?.value || undefined,
+        title,
+        message,
+        badge: ($('annBadge') as HTMLInputElement)?.value.trim() || 'ANNOUNCEMENT',
+        badge_color: ($('annBadgeColor') as HTMLSelectElement)?.value || 'emerald',
+        link_url: ($('annLinkUrl') as HTMLInputElement)?.value.trim(),
+        link_text: ($('annLinkText') as HTMLInputElement)?.value.trim(),
+        is_active: ($('annActive') as HTMLInputElement)?.checked
+      };
+
+      const { error } = await (window as any).sb.rpc('admin_save_announcement', payload);
+      if (error) {
+        (window as any).setMsg?.($('annOutMsg'), error.message || 'Could not save announcement.', 'err');
+        return;
+      }
+      (window as any).setMsg?.($('annOutMsg'), 'Announcement published successfully!', 'ok');
+      (window as any).fx?.confetti?.();
+      fillAnnouncementForm(null);
+      await loadAll();
+    };
+  }
 }
 
 // Server icon setup
@@ -611,6 +869,8 @@ if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     initAdminAuth();
     setupTabs();
+    setupAdminMobileDrawer();
+    setupAnnouncementControls();
     setupResetDataFlow();
     setupServerIconControls();
     setupSupabaseControls();
