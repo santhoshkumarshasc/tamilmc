@@ -2,6 +2,7 @@ import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
+import { randomInt } from 'node:crypto';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -98,7 +99,7 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 // Discord Bot & OAuth Configuration
-const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || 'MTU2MDE5OTcwNjQ3NzQ2NTY0MA.GL5c97.YntlvqhWjOjEQLZ04NdOVMZ5kMkQ_buUT1e5k8';
+const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN?.trim() || '';
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '1560199706477465640';
 let DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
 const DISCORD_BOT_INVITE = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot`;
@@ -115,11 +116,68 @@ function getDiscordRedirectUri(req: Request): string {
   return VERCEL_REDIRECT_URI;
 }
 
+type DiscordDMResult = { sent: boolean; reason?: string };
+
+async function sendDiscordDM(recipientId: string, payload: Record<string, unknown>): Promise<DiscordDMResult> {
+  if (!DISCORD_BOT_TOKEN) return { sent: false, reason: 'Discord bot token is not configured.' };
+
+  const userId = String(recipientId || '').trim();
+  if (!/^\d{17,20}$/.test(userId)) return { sent: false, reason: 'A valid Discord user ID is required.' };
+
+  try {
+    const channelResponse = await fetch('https://discord.com/api/v10/users/@me/channels', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ recipient_id: userId }),
+      signal: AbortSignal.timeout(4000)
+    });
+    const channelData: any = await channelResponse.json().catch(() => ({}));
+    if (!channelResponse.ok || !channelData?.id) {
+      return {
+        sent: false,
+        reason: channelData?.message || `Discord could not open a DM channel (HTTP ${channelResponse.status}).`
+      };
+    }
+
+    const messageResponse = await fetch(`https://discord.com/api/v10/channels/${encodeURIComponent(channelData.id)}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(4000)
+    });
+    if (!messageResponse.ok) {
+      const messageData: any = await messageResponse.json().catch(() => ({}));
+      return {
+        sent: false,
+        reason: messageData?.message || `Discord could not send the DM (HTTP ${messageResponse.status}).`
+      };
+    }
+    return { sent: true };
+  } catch (error: any) {
+    return {
+      sent: false,
+      reason: error?.name === 'TimeoutError' ? 'Discord DM request timed out.' : 'Discord DM request failed.'
+    };
+  }
+}
+
 // Discord Bot Status & Info Endpoint
 app.get('/api/auth/discord/bot-info', async (_req: Request, res: Response): Promise<void> => {
+  if (!DISCORD_BOT_TOKEN) {
+    res.status(503).json({ success: false, configured: false, error: 'Discord bot is not configured.' });
+    return;
+  }
+
   try {
     const response = await fetch('https://discord.com/api/v10/users/@me', {
-      headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` }
+      headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` },
+      signal: AbortSignal.timeout(4000)
     });
     if (response.ok) {
       const data: any = await response.json();
@@ -135,18 +193,15 @@ app.get('/api/auth/discord/bot-info', async (_req: Request, res: Response): Prom
       });
       return;
     }
+    res.status(response.status === 401 ? 503 : 502).json({
+      success: false,
+      configured: true,
+      error: 'Discord bot status could not be loaded.'
+    });
   } catch (err: any) {
     console.warn('[Discord Bot] Failed to fetch bot info:', err?.message);
+    res.status(502).json({ success: false, configured: true, error: 'Discord bot status could not be loaded.' });
   }
-  res.json({
-    success: true,
-    bot: {
-      id: DISCORD_CLIENT_ID,
-      username: 'TMC Official™',
-      avatar: 'https://cdn.discordapp.com/avatars/1560199706477465640/eac7715be2d9ed587f09bdc97349cba9.png',
-      inviteUrl: DISCORD_BOT_INVITE
-    }
-  });
 });
 
 // Discord OAuth URL Endpoint (Redirect URI: https://mccreatorstamil.vercel.app/auth/discord/callback)
@@ -219,6 +274,16 @@ async function exchangeDiscordCode(code: string, redirectUri: string): Promise<a
             bio: 'Verified Discord User • TMC Community',
             is_real_api_user: true
           };
+
+          const welcomeResult = await sendDiscordDM(dcUser.id, {
+            content: 'வணக்கம்! Welcome to Tamil Minecraft Creators (TMC Awards) 🎮\nYour Discord account has been connected successfully. Visit https://mccreatorstamil.vercel.app/ to finish setting up your creator profile.\n\nIf you did not start this sign-in, you can ignore this message.',
+            allowed_mentions: { parse: [] }
+          });
+          if (welcomeResult.sent) {
+            console.info('[Discord Welcome DM] Welcome message sent after verified sign-in.');
+          } else {
+            console.warn('[Discord Welcome DM] Sign-in succeeded, but the DM was not sent:', welcomeResult.reason);
+          }
         }
       }
     } catch (err) {
@@ -473,15 +538,22 @@ app.post(['/api/auth/discord/send-code', '/api/auth/github/send-code'], async (r
   try {
     const username = String(req.body?.username || '').trim().toLowerCase().replace(/^@/, '');
     const email = String(req.body?.email || '').trim().toLowerCase();
-    const explicitDiscordId = req.body?.discord_id || (/^\d{17,20}$/.test(username) ? username : null);
+    const explicitDiscordId = String(req.body?.discord_id || (/^\d{17,20}$/.test(username) ? username : '')).trim();
 
     if (!username) {
       res.status(400).json({ success: false, error: 'Discord username or User ID is required.' });
       return;
     }
+    if (!/^\d{17,20}$/.test(explicitDiscordId)) {
+      res.status(400).json({ success: false, error: 'A valid Discord user ID is required to send a DM.' });
+      return;
+    }
+    if (!DISCORD_BOT_TOKEN) {
+      res.status(503).json({ success: false, error: 'Discord bot is not configured.' });
+      return;
+    }
 
-    // Generate secure 6-digit confirmation code
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = String(randomInt(100000, 1000000));
     verificationCodes.set(username, {
       code,
       username,
@@ -490,96 +562,34 @@ app.post(['/api/auth/discord/send-code', '/api/auth/github/send-code'], async (r
       verified: false
     });
 
-    let realDmSent = false;
-    let dmApiNotice = '';
-
-    // Attempt real Discord Direct Message dispatch if user ID is known
-    if (explicitDiscordId) {
-      try {
-        // Step 1: Open DM channel with recipient
-        const dmChannelRes = await fetch('https://discord.com/api/v10/users/@me/channels', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ recipient_id: explicitDiscordId })
-        });
-
-        if (dmChannelRes.ok) {
-          const channelData: any = await dmChannelRes.json();
-          // Step 2: Send message to DM channel
-          const msgRes = await fetch(`https://discord.com/api/v10/channels/${channelData.id}/messages`, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              content: `👋 Hello <@${explicitDiscordId}>! Your **TMC Awards** Account Creation Confirmation Code is:\n# \`${code}\`\n\nEnter this 6-digit code on the registration page or click the buttons below:`,
-              embeds: [
-                {
-                  title: '🏆 Tamil Minecraft Community Awards',
-                  description: `**Account Creation Confirmation Code:**\n\`\`\`\n${code}\n\`\`\`\n_Valid for 15 minutes. Never share this code._`,
-                  color: 5793266, // #5865F2 Blurple
-                  footer: { text: 'TMC Official™ Bot • Tamil Minecraft Creators' },
-                  timestamp: new Date().toISOString()
-                }
-              ],
-              components: [
-                {
-                  type: 1,
-                  components: [
-                    {
-                      type: 2,
-                      style: 5,
-                      label: 'Open TMC Awards',
-                      url: 'https://mccreatorstamil.vercel.app/'
-                    },
-                    {
-                      type: 2,
-                      style: 5,
-                      label: 'Authorize Account (OAuth)',
-                      url: `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=https%3A%2F%2Fmccreatorstamil.vercel.app%2Fauth%2Fdiscord%2Fcallback&response_type=code`
-                    }
-                  ]
-                }
-              ]
-            })
-          });
-
-          if (msgRes.ok) {
-            realDmSent = true;
-            dmApiNotice = 'Code dispatched directly to your Discord DM by Bot!';
-          } else {
-            const errData: any = await msgRes.json().catch(() => ({}));
-            dmApiNotice = errData?.message || 'Could not send DM (user may have DMs closed or bot not in a shared server)';
-          }
-        } else {
-          const errData: any = await dmChannelRes.json().catch(() => ({}));
-          dmApiNotice = errData?.message || 'Could not create DM channel with this user ID';
+    const dmResult = await sendDiscordDM(explicitDiscordId, {
+      content: `👋 Hello <@${explicitDiscordId}>! Your TMC Awards confirmation code is:\n\n\`${code}\`\n\nIt expires in 15 minutes. Never share this code.`,
+      embeds: [
+        {
+          title: 'Tamil Minecraft Creators — TMC Awards',
+          description: `Your confirmation code is \`${code}\`. It expires in 15 minutes.`,
+          color: 5793266,
+          footer: { text: 'TMC Official™ Bot' },
+          timestamp: new Date().toISOString()
         }
-      } catch (dmErr: any) {
-        dmApiNotice = dmErr?.message || 'Discord network error';
-      }
+      ],
+      allowed_mentions: { parse: [], users: [explicitDiscordId] }
+    });
+    if (!dmResult.sent) {
+      verificationCodes.delete(username);
+      console.warn('[Discord DM Code] Confirmation DM was not sent:', dmResult.reason);
+      res.status(502).json({
+        success: false,
+        error: 'Could not send the Discord DM. The bot may need to share a server with the user, or the user may have DMs disabled.'
+      });
+      return;
     }
-
-    const dmNotification = realDmSent
-      ? `[Discord DM from Bot]: Hello @${username}! Your Confirmation Code is ${code}. Delivered directly to your Discord DM!`
-      : `[Discord DM Notice from Bot]: Hello @${username}! Your Confirmation Code is ${code}. Please enter this 6-digit code to complete connection on TMC Awards.`;
-
-    console.log(`[Discord DM Code] Code ${code} created for @${username} (Real DM: ${realDmSent ? 'SENT' : 'NOT SENT - ' + dmApiNotice})`);
 
     res.json({
       success: true,
-      message: realDmSent
-        ? `Confirmation code sent directly to @${username} via Discord DM!`
-        : `Confirmation code generated for @${username}.`,
-      realDmSent,
-      dmApiNotice,
+      message: 'Confirmation code sent directly to your Discord DM.',
+      realDmSent: true,
       username,
-      code, // Included in response for seamless testability in preview environment
-      dmNotification,
       inviteUrl: DISCORD_BOT_INVITE,
       botName: 'Bot',
       expiresIn: '15 minutes'

@@ -9,7 +9,7 @@ export const SUPABASE_PUBLISHABLE_KEY =
 export const SUPABASE_SECRET_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SECRET_KEY ||
-  'sb_secret_zjyau_f42AZR2UGTNpP3ag_KtXX9h0N';
+  '';
 
 export const SUPABASE_URL = process.env.SUPABASE_URL || '';
 
