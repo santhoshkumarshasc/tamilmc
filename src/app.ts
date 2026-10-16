@@ -340,7 +340,8 @@ export async function voteCreator(id: string): Promise<void> {
   });
 
   if (error) {
-    alert('Voting error: ' + error.message);
+    const statusLine = $('voteRuleLabel');
+    if (statusLine) statusLine.textContent = 'Voting error: ' + error.message;
     return;
   }
 
@@ -439,7 +440,9 @@ export function setupWelcomeCertModal(): void {
     copyBtn.onclick = () => {
       const code = $('welcomeCertCode')?.textContent || '';
       navigator.clipboard.writeText(code).then(() => {
-        alert(t('cert.code_copied') || 'Copied!');
+        const old = copyBtn.textContent;
+        copyBtn.textContent = '✓ ' + (t('cert.code_copied') || 'Copied!');
+        setTimeout(() => { if (copyBtn) copyBtn.textContent = old; }, 2000);
       });
     };
   }

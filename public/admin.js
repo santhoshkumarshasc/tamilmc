@@ -41,7 +41,7 @@ function updateAdminCountdown(){
   if(remaining<=0){
     clearInterval(adminTimer);
     signOut();
-    alert('Admin session ended after 5 minutes.');
+    setMsg($('lMsg'), 'Admin session expired after 5 minutes. Please sign in again.', 'note');
   }
 }
 
@@ -510,7 +510,7 @@ function renderAdmins(){
   tb.querySelectorAll('[data-del-adm]').forEach(b => b.onclick = async () => {
     if(!confirm('Permanently delete this administrator account?')) return;
     const { error } = await sb.rpc('admin_delete_admin', { p_id: b.dataset.delAdm });
-    if(error) alert(error.message || 'Failed to delete administrator');
+    if(error && $('admNewMsg')) setMsg($('admNewMsg'), error.message || 'Failed to delete administrator', 'err');
     else refresh();
   });
 }
@@ -654,6 +654,12 @@ $('adIconReset').onclick=async()=>{
             badge.style.color = '#ef4444';
           }
         }
+      } catch (err) {
+        if(msg) setMsg(msg, err?.message || 'Test failed', 'err');
+      }
+    };
+  }
+
   const copySqlBtn = $('btnCopySql');
   if(copySqlBtn){
     copySqlBtn.onclick = async () => {
@@ -663,7 +669,7 @@ $('adIconReset').onclick=async()=>{
         await navigator.clipboard.writeText(sqlText);
         if(msg) setMsg(msg, '✓ Complete Supabase SQL copied to clipboard! Paste and Run in Supabase SQL Editor.', 'ok');
       } catch(err) {
-        window.open('/api/supabase/sql', '_blank');
+        if(msg) setMsg(msg, 'SQL file available directly at /api/supabase/sql', 'note');
       }
     };
   }

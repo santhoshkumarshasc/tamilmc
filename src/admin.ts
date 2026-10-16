@@ -69,7 +69,7 @@ function startSessionTimer(): void {
     updateTimerDisplay();
     if (sessionSecondsRemaining <= 0) {
       stopSessionTimer();
-      alert('Your 5-minute admin session has expired. Please sign in again.');
+      (window as any).setMsg?.($('lMsg'), 'Your 5-minute admin session has expired. Please sign in again.', 'note');
       (window as any).sb.auth.signOut();
       showStep('login');
     }
@@ -219,7 +219,7 @@ export function setupResetDataFlow(): void {
 
       const { data, error } = await (window as any).sb.rpc('admin_reset_all_data');
       if (error) {
-        alert('Failed to reset data: ' + error.message);
+        (window as any).setMsg?.($('resetModalMsg'), 'Failed to reset data: ' + error.message, 'err');
         resetExecuteBtn.disabled = false;
         resetExecuteBtn.textContent = 'Reset Everything';
         return;
@@ -234,8 +234,6 @@ export function setupResetDataFlow(): void {
 
       // Trigger confetti and celebration
       if ((window as any).confetti) (window as any).confetti();
-
-      alert(t('ad.reset_success') || '✅ Community database successfully reset to factory defaults!');
     };
   }
 }
@@ -421,8 +419,8 @@ window.previewCert = (id: string) => {
 window.reissueCert = async (id: string) => {
   if (!confirm('Re-issue a new token for this certificate? The old token will stop working.')) return;
   const { data, error } = await (window as any).sb.rpc('admin_reissue_certificate', { p_id: id });
-  if (!error) {
-    alert('New token created: ' + data.token);
+  if (!error && data) {
+    prompt('New token created (copy below):', data.token);
     loadAll();
   }
 };
@@ -460,7 +458,7 @@ window.deleteAdmin = async (id: string) => {
   if (!confirm('Permanently delete this administrator account?')) return;
   const { error } = await (window as any).sb.rpc('admin_delete_admin', { p_id: id });
   if (error) {
-    alert(error.message || 'Failed to delete administrator');
+    (window as any).setMsg?.($('admNewMsg'), error.message || 'Failed to delete administrator', 'err');
   } else {
     loadAll();
   }
@@ -751,14 +749,14 @@ function setupServerIconControls(): void {
         reader.onload = async () => {
           iconVal = String(reader.result);
           await (window as any).sb.rpc('admin_set_server_icon', { icon: iconVal });
-          alert('Server icon updated successfully!');
+          (window as any).setMsg?.($('iconMsg'), 'Server icon updated successfully!', 'ok');
         };
         reader.readAsDataURL(file);
         return;
       } else if (urlInp && urlInp.value.trim()) {
         iconVal = urlInp.value.trim();
         await (window as any).sb.rpc('admin_set_server_icon', { icon: iconVal });
-        alert('Server icon updated successfully!');
+        (window as any).setMsg?.($('iconMsg'), 'Server icon updated successfully!', 'ok');
       }
     };
   }
@@ -766,7 +764,7 @@ function setupServerIconControls(): void {
   if (resetBtn) {
     resetBtn.onclick = async () => {
       await (window as any).sb.rpc('admin_set_server_icon', { icon: null });
-      alert('Server icon reset to default.');
+      (window as any).setMsg?.($('iconMsg'), 'Server icon reset to default.', 'ok');
     };
   }
 }
@@ -857,7 +855,7 @@ function setupSupabaseControls(): void {
         await navigator.clipboard.writeText(sqlText);
         if (msg) (window as any).setMsg(msg, '✓ Complete Supabase SQL copied to clipboard! Paste and Run in Supabase SQL Editor.', 'ok');
       } catch (err) {
-        window.open('/api/supabase/sql', '_blank');
+        if (msg) (window as any).setMsg(msg, 'SQL file available directly at /api/supabase/sql', 'note');
       }
     };
   }

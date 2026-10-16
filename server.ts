@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT: number = parseInt(process.env.PORT || '5000', 10);
+const PORT: number = parseInt(process.env.PORT || '3000', 10);
 const HOST: string = '0.0.0.0';
 
 // Security middleware: Permissive frame embedding for AI Studio preview iframe + security headers
