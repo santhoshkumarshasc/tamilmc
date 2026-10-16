@@ -103,14 +103,14 @@ const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '1560199706477465640'
 let DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
 const DISCORD_BOT_INVITE = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot`;
 const VERCEL_DOMAIN = 'https://mccreatorstamil.vercel.app';
-const VERCEL_REDIRECT_URI = 'https://mccreatorstamil.vercel.app/';
+const VERCEL_REDIRECT_URI = 'https://mccreatorstamil.vercel.app/auth/discord/callback';
 
 function getDiscordRedirectUri(req: Request): string {
   const custom = typeof req.query.redirect_uri === 'string' ? req.query.redirect_uri.trim() : '';
   if (custom && (custom.startsWith('http://') || custom.startsWith('https://'))) {
     return custom;
   }
-  // The registered redirect URL in Discord Developer Portal is https://mccreatorstamil.vercel.app/
+  // The registered redirect URL in Discord Developer Portal is https://mccreatorstamil.vercel.app/auth/discord/callback
   return VERCEL_REDIRECT_URI;
 }
 
@@ -148,21 +148,21 @@ app.get('/api/auth/discord/bot-info', async (_req: Request, res: Response): Prom
   });
 });
 
-// Discord OAuth URL Endpoint (Redirect URI: https://mccreatorstamil.vercel.app/)
+// Discord OAuth URL Endpoint (Redirect URI: https://mccreatorstamil.vercel.app/auth/discord/callback)
 app.get('/api/auth/discord/url', (req: Request, res: Response): void => {
   const requestedUri = typeof req.query.redirect_uri === 'string' ? req.query.redirect_uri.trim() : '';
   const redirectUri = requestedUri || getDiscordRedirectUri(req);
   const state = Math.random().toString(36).substring(2);
 
   // 1. User Account OAuth URL
-  const userUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20email&state=${state}`;
+  const userUrl = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20email&state=${state}`;
 
   // 2. Combined Bot Account OAuth URL
-  const botAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`;
+  const botAuthUrl = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`;
 
   // 3. Vercel-specific OAuth URLs
-  const vercelUserUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(VERCEL_REDIRECT_URI)}&response_type=code&scope=identify%20email&state=${state}`;
-  const vercelBotAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=${encodeURIComponent(VERCEL_REDIRECT_URI)}&response_type=code&state=${state}`;
+  const vercelUserUrl = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(VERCEL_REDIRECT_URI)}&response_type=code&scope=identify%20email&state=${state}`;
+  const vercelBotAuthUrl = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot%20identify%20email&redirect_uri=${encodeURIComponent(VERCEL_REDIRECT_URI)}&response_type=code&state=${state}`;
 
   res.json({
     url: userUrl,

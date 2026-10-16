@@ -535,9 +535,8 @@ function setupDiscordAuthControls(){
     btnOAuth.onclick = async () => {
       clearMsg($('aMsg'));
       try {
-        // Officially registered redirect URL in Discord Developer Portal is https://mccreatorstamil.vercel.app/
-        const isVercel = window.location.hostname.includes('vercel.app') || window.location.origin.includes('mccreatorstamil');
-        const redirectUri = isVercel ? 'https://mccreatorstamil.vercel.app/' : 'https://mccreatorstamil.vercel.app/';
+        // Officially registered redirect URL in Discord Developer Portal.
+        const redirectUri = 'https://mccreatorstamil.vercel.app/auth/discord/callback';
         
         let data = null;
         try {
@@ -547,7 +546,7 @@ function setupDiscordAuthControls(){
           }
         } catch(e){}
 
-        const authUrl = data?.url || `https://discord.com/api/oauth2/authorize?client_id=1560199706477465640&redirect_uri=${encodeURIComponent('https://mccreatorstamil.vercel.app/')}&response_type=code&scope=identify%20email`;
+        const authUrl = data?.url || `https://discord.com/oauth2/authorize?client_id=1560199706477465640&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20email`;
 
         try { localStorage.removeItem('tmc_oauth_payload'); } catch(e){}
         try { localStorage.removeItem('tmc_oauth_close'); } catch(e){}
@@ -654,7 +653,7 @@ async function checkUrlForDiscordOAuthCallback(){
       const exRes = await fetch('/api/auth/discord/exchange', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, redirect_uri: 'https://mccreatorstamil.vercel.app/' })
+        body: JSON.stringify({ code, redirect_uri: 'https://mccreatorstamil.vercel.app/auth/discord/callback' })
       });
       if (exRes.ok) {
         const exData = await exRes.json();
