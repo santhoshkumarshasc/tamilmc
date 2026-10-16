@@ -510,8 +510,11 @@ window.closeOAuthPopup = function(){
 function setupDiscordAuthControls(){
   const btnOAuth = $('btnOAuthDiscord') || $('btnOAuthGithub');
   let oauthPollTimer = null;
+  let oauthHandled = false;
 
   async function handleOAuthSuccess(payload){
+    if(oauthHandled || payload?.provider !== 'discord' || !payload?.user) return;
+    oauthHandled = true;
     if(oauthPollTimer) { clearInterval(oauthPollTimer); oauthPollTimer = null; }
     window.closeOAuthPopup();
     try { localStorage.removeItem('tmc_oauth_payload'); } catch(e){}
@@ -621,6 +624,23 @@ function setupDiscordAuthControls(){
       }
     };
   } catch(e){}
+
+  // A direct callback stores the verified profile before returning to "/".
+  // Consume it on this page load, including when there was no popup opener.
+  try {
+    const raw = localStorage.getItem('tmc_oauth_payload');
+    if(raw){
+      const parsed = JSON.parse(raw);
+      const age = Date.now() - Number(parsed?.timestamp || 0);
+      if(parsed?.type === 'OAUTH_AUTH_SUCCESS' && parsed?.provider === 'discord' && parsed?.user && age >= 0 && age < 10 * 60 * 1000){
+        void handleOAuthSuccess(parsed);
+      } else {
+        localStorage.removeItem('tmc_oauth_payload');
+      }
+    }
+  } catch(e){
+    try { localStorage.removeItem('tmc_oauth_payload'); } catch(_e){}
+  }
 }
 
 async function checkUrlForDiscordOAuthCallback(){
@@ -630,6 +650,10 @@ async function checkUrlForDiscordOAuthCallback(){
     if (!code) return;
 
     const isPopup = Boolean(window.opener && window.opener !== window);
+    try {
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    } catch(e){}
 
     // In popup window, render quick success UI
     if (isPopup) {
@@ -655,35 +679,22 @@ async function checkUrlForDiscordOAuthCallback(){
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, redirect_uri: 'https://mccreatorstamil.vercel.app/auth/discord/callback' })
       });
-      if (exRes.ok) {
-        const exData = await exRes.json();
-        if (exData.user) fetchedUser = exData.user;
+      const exData = await exRes.json();
+      if (!exRes.ok || !exData.user) {
+        throw new Error(exData.error || 'Discord profile data could not be retrieved. Please try connecting again.');
       }
-    } catch(e){}
-
-    if (!fetchedUser) {
-      let sum = 0;
-      for (let i = 0; i < code.length; i++) sum += code.charCodeAt(i);
-      const avatarIdx = sum % 6;
-      const shortCode = code.substring(0, 6).toLowerCase();
-      fetchedUser = {
-        id: 'discord_' + Date.now(),
-        discord_id: '156019970' + sum,
-        username: 'tmc_creator_' + shortCode,
-        tag: 'tmc_creator_' + shortCode,
-        display_name: 'TMC Creator (' + shortCode + ')',
-        discriminator: '0',
-        avatar_url: 'https://cdn.discordapp.com/embed/avatars/' + avatarIdx + '.png',
-        email: null,
-        bio: 'Verified Discord User • TMC Awards',
-        is_real_api_user: true
-      };
+      fetchedUser = exData.user;
+    } catch(e) {
+      console.warn('[Discord OAuth Callback Check]:', e);
+      setMsg($('aMsg'), e?.message || 'Discord profile data could not be retrieved. Please try connecting again.', 'err');
+      const dlg = $('authDlg');
+      if(dlg && typeof dlg.showModal === 'function' && !dlg.open) dlg.showModal();
+      return;
     }
 
     const payload = {
       type: 'OAUTH_AUTH_SUCCESS',
       provider: 'discord',
-      code: code,
       user: fetchedUser,
       timestamp: Date.now()
     };

@@ -225,26 +225,6 @@ async function exchangeDiscordCode(code: string, redirectUri: string): Promise<a
     }
   }
 
-  // Fallback verified Discord profile from callback authorization code
-  if (!fetchedUser && code) {
-    let sum = 0;
-    for (let i = 0; i < code.length; i++) sum += code.charCodeAt(i);
-    const avatarIdx = sum % 6;
-    const shortCode = code.substring(0, 6).toLowerCase();
-    fetchedUser = {
-      id: `discord_${Date.now()}`,
-      discord_id: `156019970${sum}`,
-      username: `tmc_creator_${shortCode}`,
-      tag: `tmc_creator_${shortCode}`,
-      display_name: `TMC Creator (${shortCode})`,
-      discriminator: '0',
-      avatar_url: `https://cdn.discordapp.com/embed/avatars/${avatarIdx}.png`,
-      email: null,
-      bio: 'Verified Discord User • TMC Awards',
-      is_real_api_user: true
-    };
-  }
-
   return fetchedUser;
 }
 
@@ -256,7 +236,15 @@ app.post('/api/auth/discord/exchange', async (req: Request, res: Response): Prom
     res.status(400).json({ success: false, error: 'Authorization code is required' });
     return;
   }
+  if (!DISCORD_CLIENT_SECRET) {
+    res.status(503).json({ success: false, error: 'Discord OAuth is not configured. Please contact the site administrator.' });
+    return;
+  }
   const user = await exchangeDiscordCode(code, redirectUri);
+  if (!user) {
+    res.status(502).json({ success: false, error: 'Discord did not return profile data. Please try connecting again.' });
+    return;
+  }
   res.json({ success: true, user });
 });
 
@@ -275,8 +263,20 @@ app.post('/api/auth/discord/set-secret', (req: Request, res: Response): void => 
 // Reusable OAuth Callback HTML Handler (handles /?code=, /auth/discord/callback, /auth/callback)
 async function renderDiscordOAuthCallbackPage(req: Request, res: Response): Promise<void> {
   const code = (req.query.code as string) || '';
+  if (!code) {
+    res.status(400).type('html').send(`<!doctype html><html><head><meta charset="utf-8"><title>Discord sign-in failed</title></head><body><h1>Discord sign-in could not be completed</h1><p>No authorization code was returned. Please try again.</p><a href="/">Return to TMC Awards</a></body></html>`);
+    return;
+  }
   const redirectUri = getDiscordRedirectUri(req);
   const fetchedUser = await exchangeDiscordCode(code, redirectUri);
+  if (!fetchedUser) {
+    const status = DISCORD_CLIENT_SECRET ? 502 : 503;
+    const message = DISCORD_CLIENT_SECRET
+      ? 'Discord profile data could not be retrieved. Please try connecting again.'
+      : 'Discord OAuth is not configured. Please contact the site administrator.';
+    res.status(status).type('html').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Discord sign-in failed</title><style>body{font-family:system-ui,sans-serif;background:#0b140f;color:#e5f2eb;display:grid;place-items:center;min-height:100vh;margin:0;padding:24px;box-sizing:border-box}.card{max-width:420px;padding:32px;border:1px solid #31513e;border-radius:16px;background:#122018;text-align:center}a{display:inline-block;margin-top:16px;color:#0b140f;background:#22c55e;padding:11px 20px;border-radius:9px;font-weight:700;text-decoration:none}</style></head><body><main class="card"><h1>Discord sign-in failed</h1><p>${message}</p><a href="/">Return to TMC Awards</a></main></body></html>`);
+    return;
+  }
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(`<!DOCTYPE html>
@@ -326,7 +326,6 @@ async function renderDiscordOAuthCallbackPage(req: Request, res: Response): Prom
       var payload = {
         type: 'OAUTH_AUTH_SUCCESS',
         provider: 'discord',
-        code: ${JSON.stringify(code)},
         user: ${JSON.stringify(fetchedUser)},
         timestamp: Date.now()
       };
@@ -361,8 +360,8 @@ async function renderDiscordOAuthCallbackPage(req: Request, res: Response): Prom
             return;
           }
         } catch (e) {}
-        // If not in a popup, redirect cleanly to home page
-        window.location.href = '/';
+        // If not in a popup, return to the website; its app will consume the saved profile.
+        window.location.replace('/');
       }
       window.doClose = doClose;
 
@@ -375,8 +374,8 @@ async function renderDiscordOAuthCallbackPage(req: Request, res: Response): Prom
         setTimeout(doClose, 900);
       } else {
         setTimeout(function() {
-          window.location.href = '/';
-        }, 1200);
+          window.location.replace('/');
+        }, 800);
       }
     })();
   </script>
