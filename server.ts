@@ -103,7 +103,8 @@ const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '1560199706477465640'
 let DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
 const DISCORD_BOT_INVITE = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&permissions=8&integration_type=0&scope=bot`;
 const VERCEL_DOMAIN = 'https://mccreatorstamil.vercel.app';
-const VERCEL_REDIRECT_URI = 'https://mccreatorstamil.vercel.app/auth/discord/callback';
+const VERCEL_HOME_URL = `${VERCEL_DOMAIN}/`;
+const VERCEL_REDIRECT_URI = `${VERCEL_DOMAIN}/auth/discord/callback`;
 
 function getDiscordRedirectUri(req: Request): string {
   const custom = typeof req.query.redirect_uri === 'string' ? req.query.redirect_uri.trim() : '';
@@ -329,6 +330,7 @@ async function renderDiscordOAuthCallbackPage(req: Request, res: Response): Prom
         user: ${JSON.stringify(fetchedUser)},
         timestamp: Date.now()
       };
+      var siteHome = ${JSON.stringify(VERCEL_HOME_URL)};
 
       function broadcastAuth() {
         try {
@@ -361,7 +363,7 @@ async function renderDiscordOAuthCallbackPage(req: Request, res: Response): Prom
           }
         } catch (e) {}
         // If not in a popup, return to the website; its app will consume the saved profile.
-        window.location.replace('/');
+        window.location.replace(siteHome);
       }
       window.doClose = doClose;
 
@@ -374,7 +376,7 @@ async function renderDiscordOAuthCallbackPage(req: Request, res: Response): Prom
         setTimeout(doClose, 900);
       } else {
         setTimeout(function() {
-          window.location.replace('/');
+          window.location.replace(siteHome);
         }, 800);
       }
     })();

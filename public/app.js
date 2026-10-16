@@ -2,6 +2,8 @@
 'use strict';
 const COLORS=['#1f9d5e','#1b8fd6','#e0a81f','#a855f7','#f97316','#ec4899','#3358c4'];
 const STYLE_CLASS={raised:'s-glass',flat:'s-solid',outline:'s-neon'};
+const TMC_HOME_URL='https://mccreatorstamil.vercel.app/';
+const DISCORD_CALLBACK_URL=`${TMC_HOME_URL}auth/discord/callback`;
 
 function getStoredSession(){
   try {
@@ -538,48 +540,17 @@ function setupDiscordAuthControls(){
     btnOAuth.onclick = async () => {
       clearMsg($('aMsg'));
       try {
-        // Officially registered redirect URL in Discord Developer Portal.
-        const redirectUri = 'https://mccreatorstamil.vercel.app/auth/discord/callback';
-        
-        let data = null;
-        try {
-          const res = await fetch(`/api/auth/discord/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
-          if (res.ok) {
-            data = await res.json();
-          }
-        } catch(e){}
-
-        const authUrl = data?.url || `https://discord.com/oauth2/authorize?client_id=1560199706477465640&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20email`;
+        const res = await fetch(`/api/auth/discord/url?redirect_uri=${encodeURIComponent(DISCORD_CALLBACK_URL)}`);
+        const data = await res.json();
+        if(!res.ok || typeof data?.url !== 'string'){
+          throw new Error(data?.error || 'Could not start Discord sign-in. Please try again.');
+        }
 
         try { localStorage.removeItem('tmc_oauth_payload'); } catch(e){}
         try { localStorage.removeItem('tmc_oauth_close'); } catch(e){}
-
-        window.oauthPopup = window.open(authUrl, 'discord_oauth_popup', 'width=600,height=700');
-        if(!window.oauthPopup){
-          setMsg($('aMsg'), 'Please allow popups in your browser to authorize with Discord.', 'err');
-          return;
-        }
-
-        if(oauthPollTimer) clearInterval(oauthPollTimer);
-        oauthPollTimer = setInterval(() => {
-          try {
-            const raw = localStorage.getItem('tmc_oauth_payload');
-            if(raw){
-              const parsed = JSON.parse(raw);
-              if(parsed && parsed.type === 'OAUTH_AUTH_SUCCESS'){
-                window.closeOAuthPopup();
-                handleOAuthSuccess(parsed);
-                return;
-              }
-            }
-          } catch(e){}
-          if(!window.oauthPopup || window.oauthPopup.closed){
-            clearInterval(oauthPollTimer);
-            oauthPollTimer = null;
-          }
-        }, 150);
+        window.location.assign(data.url);
       } catch(e){
-        setMsg($('aMsg'), 'Failed to connect to Discord authorization service. Please try again.', 'err');
+        setMsg($('aMsg'), e?.message || 'Failed to connect to Discord authorization service. Please try again.', 'err');
       }
     };
   }
@@ -677,7 +648,7 @@ async function checkUrlForDiscordOAuthCallback(){
       const exRes = await fetch('/api/auth/discord/exchange', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, redirect_uri: 'https://mccreatorstamil.vercel.app/auth/discord/callback' })
+        body: JSON.stringify({ code, redirect_uri: DISCORD_CALLBACK_URL })
       });
       const exData = await exRes.json();
       if (!exRes.ok || !exData.user) {
@@ -770,6 +741,11 @@ async function loginWithDiscordUser(discordUser){
       dlg.removeAttribute('open');
     }
     authBtns();
+    const target = new URL(TMC_HOME_URL);
+    if(window.location.origin !== target.origin || window.location.pathname !== target.pathname || window.location.search || window.location.hash){
+      window.location.replace(target.href);
+      return;
+    }
     setPage('dashboard');
   } catch(e){
     setMsg($('aMsg'), 'Failed to connect with Discord. Try again.', 'err');
